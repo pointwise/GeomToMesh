@@ -1,0 +1,348 @@
+# gliderMultiModel.csm written by ocsmSave (v1.11)
+
+# Constant Parameters:
+
+# Design Parameters:
+despmtr   withbox      1
+
+despmtr   wing:xloc       4.00000
+despmtr   wing:zloc       0.00000
+despmtr   wing:thick       0.12000
+despmtr   wing:camber       0.04000
+despmtr   wing:area     100.00000
+despmtr   wing:aspect       6.00000
+despmtr   wing:taper       0.60000
+despmtr   wing:sweep      20.00000
+despmtr   wing:washout       5.00000
+despmtr   wing:dihedral       4.00000
+despmtr   wing:wakeLen     100.00000
+despmtr   wing:wakeAng      -5.00000
+despmtr   htail:xloc      14.50000
+despmtr   htail:yloc       0.00000
+despmtr   htail:zloc       0.20000
+despmtr   htail:thickness       0.10000
+despmtr   htail:camber       0.02000
+despmtr   htail:area      10.00000
+despmtr   htail:aspect       4.00000
+despmtr   htail:taper       0.80000
+despmtr   htail:twist       0.00000
+despmtr   htail:sweep      10.00000
+despmtr   htail:dihedral       0.00000
+despmtr   vtail:xloc      13.30000
+despmtr   vtail:yloc       0.10000
+despmtr   vtail:thickness       0.10000
+despmtr   vtail:area      10.00000
+despmtr   vtail:aspect       3.00000
+despmtr   vtail:taper       0.50000
+despmtr   vtail:twist       0.00000
+despmtr   vtail:sweep      30.00000
+despmtr   fuse:numXsect       6.00000
+dimension fuse:xloc   6   1   1
+despmtr   fuse:xloc[1,:]   "     0.00000;"
+despmtr   fuse:xloc[2,:]   "     1.00000;"
+despmtr   fuse:xloc[3,:]   "     4.00000;"
+despmtr   fuse:xloc[4,:]   "     8.00000;"
+despmtr   fuse:xloc[5,:]   "    12.00000;"
+despmtr   fuse:xloc[6,:]   "    16.00000;"
+dimension fuse:zloc   6   1   1
+despmtr   fuse:zloc[1,:]   "     0.00000;"
+despmtr   fuse:zloc[2,:]   "     0.10000;"
+despmtr   fuse:zloc[3,:]   "     0.40000;"
+despmtr   fuse:zloc[4,:]   "     0.40000;"
+despmtr   fuse:zloc[5,:]   "     0.30000;"
+despmtr   fuse:zloc[6,:]   "     0.20000;"
+dimension fuse:width   6   1   1
+despmtr   fuse:width[1,:]   "     0.00000;"
+despmtr   fuse:width[2,:]   "     1.00000;"
+despmtr   fuse:width[3,:]   "     1.60000;"
+despmtr   fuse:width[4,:]   "     1.60000;"
+despmtr   fuse:width[5,:]   "     1.20000;"
+despmtr   fuse:width[6,:]   "     0.00000;"
+dimension fuse:height   6   1   1
+despmtr   fuse:height[1,:]   "     0.00000;"
+despmtr   fuse:height[2,:]   "     1.00000;"
+despmtr   fuse:height[3,:]   "     2.00000;"
+despmtr   fuse:height[4,:]   "     2.00000;"
+despmtr   fuse:height[5,:]   "     1.20000;"
+despmtr   fuse:height[6,:]   "     0.00000;"
+dimension fuse:noselist   2   4   1
+despmtr   fuse:noselist[1,:]   "     0.10000;     0.00000;     1.00000;     0.00000;"
+despmtr   fuse:noselist[2,:]   "     0.10000;     0.00000;     0.00000;     1.00000;"
+dimension fuse:taillist   2   4   1
+despmtr   fuse:taillist[1,:]   "     0.05000;     0.00000;     1.00000;     0.00000;"
+despmtr   fuse:taillist[2,:]   "     0.05000;     0.00000;     0.00000;     1.00000;"
+
+# Global Attributes:
+
+# Wing
+set       span sqrt(wing:aspect*wing:area)
+set       croot 2*wing:area/span/(1+wing:taper)
+set       ctip croot*wing:taper
+set       dxtip (croot-ctip)/4+span/2*tand(wing:sweep)
+set       dytip span/2*tand(wing:dihedral)
+mark
+udprim    naca   Thickness   wing:thick   Camber   wing:camber   SharpTE   1
+scale     ctip
+rotatez   wing:washout   ctip/4   0
+translate dxtip   dytip   -span/2
+udprim    naca   Thickness   wing:thick   Camber   wing:camber   SharpTE   1
+scale     croot
+udprim    naca   Thickness   wing:thick   Camber   wing:camber   SharpTE   1
+scale     ctip
+rotatez   wing:washout   ctip/4   0
+translate dxtip   dytip   +span/2
+rule      0
+translate wing:xloc   0   wing:zloc
+#select    edge   1
+#attribute Wake   $Wing_Wake
+#select    edge   5
+#attribute Wake   $Wing_Wake
+rotatex   90   0   0
+store     wingOML   0   0
+
+
+# Fuselage
+mark
+set       isect 1
+patbeg    inose   ifzero(abs(fuse:width[isect])+abs(fuse:height[isect]),1,0)
+   skbeg     fuse:xloc[isect]   0   fuse:zloc[isect]   0
+   skend     0
+patend
+set       isect 1
+patbeg    inose   ifzero(abs(fuse:width[isect])+abs(fuse:height[isect]),0,1)
+   udprim    ellipse   ry   fuse:width[isect]/2   rz   fuse:height[isect]/2
+   translate fuse:xloc[isect]   0   fuse:zloc[isect]
+patend
+patbeg    jsect   fuse:numXsect-2
+   set       isect jsect+1
+   udprim    ellipse   ry   fuse:width[isect]/2   rz   fuse:height[isect]/2
+   translate fuse:xloc[isect]   0   fuse:zloc[isect]
+patend
+set       isect fuse:numXsect
+patbeg    itail   ifzero(abs(fuse:width[isect])+abs(fuse:height[isect]),1,0)
+   skbeg     fuse:xloc[isect]   0   fuse:zloc[isect]   0
+   skend     0
+patend
+set       isect fuse:numXsect
+patbeg    itail   ifzero(abs(fuse:width[isect])+abs(fuse:height[isect]),0,1)
+   udprim    ellipse   ry   fuse:width[isect]/2   rz   fuse:height[isect]/2
+   translate fuse:xloc[isect]   0   fuse:zloc[isect]
+patend
+blend     fuse:noselist   fuse:taillist   0   0
+store     fuseOML   0   0
+
+
+# Horizontal tail
+set       span sqrt(htail:area*htail:aspect)
+set       cbar htail:area/span
+set       croot 2*cbar/(1+htail:taper)
+set       ctip htail:taper*croot
+mark
+udprim    naca   thickness   htail:thickness   camber   htail:camber   SharpTE   1
+rotatex   90   0   0
+scale     ctip
+rotatey   -htail:twist   0   0
+translate span/2*tand(htail:sweep)   -span/2   -span/2*tand(htail:dihedral)
+udprim    naca   thickness   htail:thickness   camber   htail:camber   SharpTE   1
+rotatex   90   0   0
+scale     croot
+udprim    naca   thickness   htail:thickness   camber   htail:camber   SharpTE   1
+rotatex   90   0   0
+scale     ctip
+rotatey   -htail:twist   0   0
+translate span/2*tand(htail:sweep)   span/2   span/2*tand(htail:dihedral)
+rule      0
+translate htail:xloc   htail:yloc   htail:zloc
+#select    edge   1
+#attribute Wake   $HTail_Wake
+#select    edge   5
+#attribute Wake   $HTail_Wake
+store     htailOML   0   0
+
+
+# Vertical tail
+set       span sqrt(vtail:area*vtail:aspect)
+set       cbar vtail:area/span
+set       croot 2*cbar/(1+vtail:taper)
+set       ctip vtail:taper*croot
+mark
+udprim    naca   thickness   vtail:thickness   camber   0   SharpTE   1
+rotatex   90   0   0
+scale     croot
+udprim    naca   thickness   vtail:thickness   camber   0   SharpTE   1
+rotatex   90   0   0
+scale     ctip
+translate span/2*tand(vtail:sweep)   span/2   0
+rule      0
+translate vtail:xloc   vtail:yloc   0
+rotatex   90   0   0
+store     vtailOML   0   0
+
+
+# Generate wing wake
+restore   wingOML   0
+extract   -1
+extrude   wing:wakeLen*cosd(wing:wakeAng)   0   wing:wakeLen*sind(wing:wakeAng)
+select    face   1
+attribute capsGroup   $Wing_Wake
+attribute .tParam "0.5; 0.01; 33.;"
+store     rite_wing_wake   0   0
+restore   wingOML   0
+extract   -5
+extrude   wing:wakeLen*cosd(wing:wakeAng)   0   wing:wakeLen*sind(wing:wakeAng)
+select    face   1
+attribute capsGroup   $Wing_Wake
+attribute .tParam "0.5; 0.01; 33.;"
+store     left_wing_wake   0   0
+restore   rite_wing_wake   0
+attribute PW:Baffle $Baffle
+restore   left_wing_wake   0
+attribute PW:Baffle $Baffle
+union     0   0   0
+attribute Wake   $Wing_Wake
+store     WING_WAKE   0   0
+
+# Generate wing adjoint wake
+restore   wingOML   0
+extract   -3
+extrude   -wing:wakeLen*cosd(wing:wakeAng)   0   -wing:wakeLen*sind(wing:wakeAng)
+store     rite_wing_adj_wake   0   0
+restore   wingOML   0
+extract   -6
+extrude   -wing:wakeLen*cosd(wing:wakeAng)   0   -wing:wakeLen*sind(wing:wakeAng)
+restore   rite_wing_adj_wake   0
+union     0   0   0
+store     WING_ADJ_WAKE   0   0
+
+
+# Generate horizontal tail wake
+restore   htailOML   0
+extract   -5
+extrude   wing:wakeLen*cosd(wing:wakeAng)   0   wing:wakeLen*sind(wing:wakeAng)
+select    face   1
+attribute capsGroup   $HTail_Wake
+attribute .tParam "0.5; 0.01; 33.;"
+#attribute ->Triangle 33
+store     rite_htail_wake   0   0
+restore   htailOML   0
+extract   -1
+extrude   wing:wakeLen*cosd(wing:wakeAng)   0   wing:wakeLen*sind(wing:wakeAng)
+select    face   1
+attribute capsGroup   $HTail_Wake
+attribute .tParam "0.5; 0.01; 33.;"
+#attribute ->Triangle 33
+store     left_htail_wake   0   0
+restore   rite_htail_wake   0
+attribute PW:Baffle $Baffle
+restore   left_htail_wake   0
+attribute PW:Baffle $Baffle
+union     0   0   0
+store     HTAIL_WAKE   0   0
+
+# Union all OMLs
+restore   wingOML   0
+attribute PW:DomainEndSpacing 0.1
+attribute PW:DomainMaxEdge 0.25
+restore   fuseOML   0
+union     0   0   0
+
+restore   htailOML   0
+attribute PW:DomainEndSpacing 0.05
+attribute PW:DomainMaxEdge 0.15
+union     0   0   0
+restore   vtailOML   0
+attribute PW:DomainEndSpacing 0.05
+attribute PW:DomainMaxEdge 0.15
+union     0   0   0
+restore   WING_WAKE
+subtract
+
+#Cut out OML from wakes
+store     OML   0   0
+restore   WING_WAKE   0
+restore   OML   0
+subtract  none   1   0
+store     WING_WAKE_CUT   0   0
+restore   HTAIL_WAKE   0
+restore   OML   0
+subtract  none   1   0
+store     HTAIL_WAKE_CUT   0   0
+
+restore   OML   0
+restore WING_ADJ_WAKE
+subtract
+attribute capsGroup $Wall
+attribute capsIntent  $FULLPOTENTIAL
+store   OML2   0
+
+
+ifthen withbox eq 1
+  
+  box -50 -50 -50 100 100 100
+  select face 1
+  attribute capsGroup $Inflow
+  select face 2
+  attribute capsGroup $Outflow
+  attribute PW:Baffle $Intersect
+  select face 3
+  attribute capsGroup $Outflow
+  select face 4
+  attribute capsGroup $Outflow
+  select face 5
+  attribute capsGroup $Outflow
+  select face 6
+  attribute capsGroup $Outflow
+  store outerbox
+  
+  #box -50 -50 -50 90 100 100
+  #store trimbox
+
+  restore   WING_WAKE_CUT   0
+  restore outerbox
+  #restore trimbox
+  intersect
+  store WING_WAKE_CUT2
+  
+  restore HTAIL_WAKE_CUT   0
+  restore outerbox
+  #restore trimbox
+  intersect
+  store HTAIL_WAKE_CUT2
+  
+  mark
+  restore outerbox 0
+  restore OML2 0
+  subtract
+    
+  restore   WING_WAKE_CUT2   0
+  attribute capsGroup   $Wing_Wake
+  attribute capsIntent  $WAKE
+  
+  restore   HTAIL_WAKE_CUT2   0
+  attribute capsGroup   $HTail_Wake
+  attribute capsIntent  $WAKE
+  
+  dump      /home/skarman/Documents/Cases/Glider/gliderbox.egads   0   1
+  dump      /home/skarman/Documents/Cases/Glider/gliderbox.iges   0   1
+
+else
+  
+  mark
+  restore   OML2   0
+  
+  restore   WING_WAKE_CUT   0
+  attribute capsGroup   $Wing_Wake
+  attribute capsIntent  $WAKE
+  #attribute PW:Baffle $Baffle
+  
+  restore   HTAIL_WAKE_CUT   0
+  attribute capsGroup   $HTail_Wake
+  attribute capsIntent  $WAKE
+  #attribute PW:Baffle $Baffle
+  
+  dump      /home/skarman/Documents/Cases/Glider/glider.egads   0   1
+
+endif
+
+end
+

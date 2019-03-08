@@ -1,0 +1,33 @@
+# /home/skarman/Documents/Cases/Box/three_spheres_box.csm written by ocsmSave (v1.12)
+
+# Constant and Design Parameters:
+
+# Global Attributes:
+
+# Branches:
+box       -10   -10   -10   20   20   20
+attribute PW:Name   $OuterBox
+
+sphere    -1   0   0   0.5
+attribute PW:Name   $FrontSphere
+attribute PW:WallSpacing   0.001
+attribute PW:DomainAlgorithm   $Delaunay
+subtract  none   1   0
+
+sphere    1   0   0   0.5
+attribute PW:Name   $MidSphere
+attribute PW:WallSpacing   0.005
+attribute PW:DomainIsoType   $TriangleQuad
+attribute PW:DomainAlgorithm   $AdvancingFrontOrtho
+subtract  none   1   0
+
+sphere    3   0   0   0.5
+attribute PW:Name   $BackSphere
+attribute PW:WallSpacing   0.001
+attribute PW:DomainAlgorithm   $AdvancingFront
+subtract  none   1   0
+
+dump      /home/skarman/Documents/Cases/Box/three_spheres_box.egads   0   0
+dump      /home/skarman/Documents/Cases/Box/three_spheres_box.iges   0   0
+
+end

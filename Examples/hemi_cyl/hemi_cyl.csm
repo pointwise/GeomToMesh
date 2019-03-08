@@ -1,0 +1,43 @@
+# /Users/skarman/Documents/Cases/hemi_cyl/hemi_cyl.csm written by ocsmSave (v1.12)
+
+# Constant and Design Parameters:
+despmtr   radius       0.50000
+despmtr   Oradius      20.00000
+despmtr   length      10.00000
+
+# Global Attributes:
+
+# Branches:
+attribute PW:TRexIsoHeight 0.8660
+attribute PW:TRexGrowthRate 1.2
+attribute PW:BoundaryDecay 0.8
+attribute PW:TRexType $TetPyramid
+sphere    radius   0   0   Oradius
+attribute PW:Name   $Outer
+cylinder  radius   0   0   Oradius   0   0   Oradius
+subtract  none   1   0
+cylinder  radius   0   0   length   0   0   Oradius
+attribute PW:Name   $Outer
+union     0   0   0
+sphere    radius   0   0   radius
+attribute PW:Name   $Cylinder
+attribute PW:WallSpacing   0.001
+attribute PW:DomainIsoType $Triangle
+attribute PW:DomainAlgorithm $AdvancingFront
+attribute PW:DomainTRexType $Triangle
+subtract  none   1   0
+cylinder  radius   0   0   length   0   0   radius
+attribute PW:Name   $Cylinder
+attribute PW:WallSpacing   0.001
+attribute PW:DomainIsoType $Triangle
+attribute PW:DomainAlgorithm $AdvancingFront
+attribute PW:DomainTRexType $Triangle
+subtract  none   1   0
+box       radius-Oradius   -Oradius   -Oradius   radius+Oradius*2   Oradius*2   Oradius
+attribute PW:Name   $Symmetry
+subtract  none   1   0
+
+dump      /Users/skarman/Documents/Cases/hemi_cyl/hemi_cyl.egads   0   0
+dump      /Users/skarman/Documents/Cases/hemi_cyl/hemi_cyl.iges   0   0
+
+end

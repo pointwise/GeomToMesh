@@ -129,7 +129,7 @@ supersede the global settings where applicable.
 
 Supported geometry formats for GeomToMesh include *EGADS*, *IGES*, *STEP* and
 *NMB* (Pointwise proprietary geometry format) files.  GeomToMesh will attempt
-to create a ingle unstructured block volume mesh.  IGES and STEP files will not
+to create a single unstructured block volume mesh.  IGES and STEP files will not
 contain GeomToMesh attributes, so the resulting volume mesh will be of the
 isotropic variety with no viscous boundaries or layers.
 

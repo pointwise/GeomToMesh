@@ -120,6 +120,7 @@ proc calcTurnAngleBetweenCons { con0 con1 } {
 # ----------------------------------------------
 proc setSpacingAtNodes { nodeSpacings { reduceOnly 0 } } {
     global domParams
+    global constants
 
     if { 0 == [llength $nodeSpacings] } {
         return 0
@@ -1542,8 +1543,8 @@ proc increaseConnectorDimensionFromAngleDeviationQuilts { conList conMaxDim conT
                         set curveDevDist($con) [[$con getDistribution 1] copy]
                         if { $newdim > $dim } {
                             set newsp [$con getAverageSpacing]
-                            puts "  Connector $i/[llength $conList]. Dim changed from %d to $d.\
-                                  Spacing changed from %.6g to %.6g." $dim $newdim $sp $newsp]
+                            puts [format "  Connector $i/[llength $conList]. Dim changed from %d to %d.\
+                              Spacing changed from %.6g to %.6g." $dim $newdim $sp $newsp]
                         }
                     }
                 $conMode end
@@ -1609,8 +1610,8 @@ proc increaseConnectorDimensionFromAngleDeviationQuilts { conList conMaxDim conT
 
                     if { $newdim > $dim } {
                         set newsp [$con getAverageSpacing]
-                        puts "  Connector $i/[llength $conList]. Dim changed from %d to %d.\
-                              Spacing changed from %.6g to %.6g." $dim $newdim $sp $newsp]
+                        puts [format "  Connector $i/[llength $conList]. Dim changed from %d to %d.\
+                          Spacing changed from %.6g to %.6g." $dim $newdim $sp $newsp]
                     }
                 }
             $conMode end
@@ -1644,8 +1645,8 @@ proc increaseConnectorDimensionFromAngleDeviationQuilts { conList conMaxDim conT
                     # $con replaceDistribution 1 [pw::DistributionTanh create]
                     if { $newdim > $dim } {
                         set newsp [$con getAverageSpacing]
-                        puts "  Connector $i/[llength $conList]. Dim changed from %d to %d.\
-                              Spacing changed from %.6g to %.6g." $dim $newdim $sp $newsp]
+                        puts [format "  Connector $i/[llength $conList]. Dim changed from %d to %d.\
+                          Spacing changed from %.6g to %.6g." $dim $newdim $sp $newsp]
                     }
 
                 }
@@ -2132,7 +2133,7 @@ proc increaseConnectorDimensionFromAngleDeviation { conList conMaxDim conTurnAng
     upvar $nodeListVar nodeList
     upvar $nodeSpacingVar nodeSpacing
     upvar $conTRexVar conTRex
-    global constants conData
+    global constants conData domParams
 
     #
     # NOTE: distribution is reset to equal spacing
@@ -2163,7 +2164,7 @@ proc increaseConnectorDimensionFromAngleDeviation { conList conMaxDim conTurnAng
 
             # determine whether surface curvature triggers TRex
             set dimRatio [expr $curvedim / $newdim]
-            if { $dimRatio > $dimRatioThreshold } {
+            if { $domParams(MaxLayers) > 0 && $dimRatio > $dimRatioThreshold } {
 
                 # set endpoint finest spacings
 

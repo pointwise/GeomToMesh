@@ -17,8 +17,8 @@ set conParams(MinDim)                        5; # Minimum connector dimension
 set conParams(TurnAngle)                  10.0; # Maximum turning angle on connectors for dimensioning (0 - not used)
 set conParams(Deviation)                   0.0; # Maximum deviation on connectors for dimensioning (0 - not used)
 set conParams(SplitAngle)                 70.0; # Turning angle on connectors to split (0 - not used)
+set conParams(JoinCons)                      0; # Perform joining operation on 2 connectors at one endpoint
 set conParams(ProxGrowthRate)              1.3; # Connector proximity growth rate
-set conParams(AdaptSources)                  1; # Compute sources using connectors (0 - not used) V18.2+
 set conParams(SourceSpacing)                 1; # Use source cloud for adaptive pass on connectors V18.2+
 set conParams(TurnAngleHard)               5.0; # Hard edge turning angle limit for domain T-Rex (0.0 - not used)
 
@@ -33,7 +33,7 @@ set domParams(TRexARLimit)             20.0; # Domain T-Rex maximum aspect ratio
 set domParams(Decay)                    0.8; # Domain boundary decay
 set domParams(MinEdge)                  0.0; # Domain minimum edge length
 set domParams(MaxEdge)                  0.0; # Domain maximum edge length
-set domParams(Adapt)                      1; # Set up all domains for adaptation (0 - not used) V18.2+
+set domParams(Adapt)                      0; # Set up domains marked as source or target from geometry
 
 # Block level
 set blkParams(boundaryDecay)                  0.8; # Volumetric boundary decay

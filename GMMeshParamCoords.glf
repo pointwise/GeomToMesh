@@ -13,7 +13,7 @@
 # Utilize the CAE mesh file point indices and egadsID db entity attribute
 #
 
-package require PWI_Glyph 2.18.2
+package require PWI_Glyph
 
 # Compute unique index for a domain point
 proc GetDomN { i j id } {
@@ -651,6 +651,15 @@ proc decodeEgadsID { id } {
 }
 
 # Write the geometry map file for the given set of blocks
+# GMA file format
+# <number of points>
+#    grid_file_point_index  EGADS_entity_ID U V (one point per line)
+# EGADS Edge Groups (connectors constrained to EGADS edge geometry)
+#  EGADS_edge_ID  number_of_points_on_edge
+#    grid_file_point_indices (one point per line)
+# EGADS Face Groups (domains constrained to EGADS edge geometry)
+#  EGADS_face_ID  number_of_tri_faces_on_face number_of_quad_faces_on_face
+#    mesh face indices (grid file point indices forming face) (one face per line)
 proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
     global globalPointInd globalPoints domCellEdge
     global egadsCurveMapMsgs
@@ -763,6 +772,7 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
     }
 
     # add domain interior points
+    catch {unset egadsFaceDoms}
     foreach dom $doms {
         set domName [$dom getName]
 
@@ -804,6 +814,9 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
             # unconstrained domain
             continue
         }
+        
+        set domEgadsID 0
+        set markedBadDom 0
 
         set dim [$dom getPointCount]
         for { set domInd 1 } { $domInd <= $dim } { incr domInd } {
@@ -813,6 +826,19 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
             }
             set gridPoint [$dom getPoint $domInd]
             set egadsID [getEgadsIDByGridPoint $gridPoint]
+            if {$egadsID != "" && $domEgadsID == 0} {
+               set domEgadsID $egadsID
+               lappend egadsFaceDoms(doms) $dom
+               set egadsFaceDoms($dom,egadsID) $egadsID
+            } else {
+               if {!$markedBadDom && $egadsID != $domEgadsID} {
+                   set markedBadDom 1
+                   lappend egadsFaceDoms(bad_doms) $dom
+                   lappend egadsFaceDoms(bad_doms_egadsIDs) $dom
+                   set ind [lsearch -exact $egadsFaceDoms(doms) $dom]
+                   set egadsFaceDoms(doms) [lreplace $egadsFaceDoms(doms) $ind $ind]
+               }
+            }
             set index $globalPointInd($dom,$domInd)
             if { 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
                 set meshPoint($index) 1
@@ -824,6 +850,19 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
                 set meshPoint($meshPoint(num),uv) $uv
                 incr meshPoint(num)
             }
+        }
+        if {$domEgadsID == 0 && [llength $dbEnts] == 1 } {
+             # can't map using interior points, use solver constraint
+             set egadsID [getEgadsIDByGridPoint $dbEnts]
+             if {$egadsID != ""} {
+                set domEgadsID $egadsID
+                lappend egadsFaceDoms(doms) $dom
+                set egadsFaceDoms($dom,egadsID) $egadsID
+             }
+        }
+
+        if {$domEgadsID == 0} {
+            puts "Unable to map $domName to EGADS face ID"
         }
     }
 
@@ -860,7 +899,107 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
             puts $f $str
         }
     }
+    
+    # write con points which map to EGADS edges
+    set egadsEdgeConCount 0
+    foreach con $cons {
+        set conName [$con getName]
+        set dim [$con getDimension]
+        set conEgadsID 0
+        
+        if {$dim < 3} {
+            # map conEgadsID from node
+            set nodePoint [$con getPoint -constrained isDb 1]
+            if {$isDb} {
+                set nodeDB [lindex $nodePoint 2]
+                set nodeEgadsID [getEgadsIDByGridPoint $nodeDB]
+                if {$nodeEgadsID != ""} {
+                    set conEgadsID $nodeEgadsID
+                }
+            }
+        } else {
+            # map conEgadsID from interior grid point
+            set gridPoint [$con getPoint 2]
+            set conEgadsID [getEgadsIDByGridPoint $gridPoint]
+            if {0 == [llength $conEgadsID]} {
+                puts "Unable to map $conName to EGADS edge ID"
+                continue
+            }
+            
+            # check that other interior points map to same EgadsID
+            for { set i 3 } { $i < $dim } { incr i } {
+                set gridPoint [$con getPoint $i]
+                set egadsID [getEgadsIDByGridPoint $gridPoint]
+                if { $egadsID != $conEgadsID } {
+                    puts "$conName maps to more than one EGADS edge ID"
+                    puts "$egadsID != $conEgadsID"
+                    set conEgadsID 0
+                    break
+                }
+            }
+        }
+        
+        if {$conEgadsID == 0} {
+            puts "Unable to map $conName to EGADS edge ID"
+            continue
+        }
+        
+        # con maps to single EGADS edge ID - write points
+        puts $f [format "%d %d" $conEgadsID $dim]
+        for { set i 1 } { $i <= $dim } { incr i } {
+            puts $f $globalPointInd($con,$i)
+        }
+        incr egadsEdgeConCount
+    }
+    puts "GMA contains $egadsEdgeConCount edge groups"
 
+    # write dom faces which map to EGADS faces
+    if {[info exists egadsFaceDoms(bad_doms)]} {
+        foreach dom $egadsFaceDoms(bad_doms) {
+            puts "[$dom getName] maps to more than one EGADS face ID"
+            puts "$egadsFaceDoms(bad_doms_egadsIDs)"
+        }
+    }
+    foreach dom $egadsFaceDoms(doms) {
+        set num_tri [pw::Grid getElementCount Triangle $dom]    
+        set num_quad [pw::Grid getElementCount Quad $dom]
+        puts $f [format "%d %d %d" $egadsFaceDoms($dom,egadsID) $num_tri $num_quad]
+        
+        if [$dom isOfType pw::DomainUnstructured] {
+            set num_cells [$dom getCellCount]
+            # We're relying on the fact that domain getCell
+            # returns all tris followed by all quads.
+            for {set i 1} {$i <= $num_cells} {incr i} {
+                set cell [$dom getCell $i]
+                set globalInds ""
+                foreach ind $cell {
+                   lappend globalInds $globalPointInd($dom,$ind)
+                }
+                puts $f $globalInds
+            }
+        
+        } elseif [$dom isOfType pw::DomainStructured] {
+            set dims [$dom getDimensions]
+            set id [lindex $dims 0]
+            set jd [lindex $dims 1]
+            for {set j 1} {$j < $jd} {incr j} {
+                for {set i 1} {$i < $id} {incr i} {
+                    # Note: domain getCell could return a tri if 
+                    # the domain contains a pole connector.  
+                    # We are not handling this case appropriately since 
+                    # the tris and quads will be interleaved.
+                    set cell [$dom getCell "$i $j"]
+                    set globalInds ""
+                    foreach ind $cell {
+                       lappend globalInds $globalPointInd($dom,$ind)
+                    }
+                    puts $f $globalInds
+                }
+            }
+        }
+    }
+    puts "GMA contains [llength $egadsFaceDoms(doms)] face groups"
+    
     close $f
 
     set msgs [array names egadsCurveMapMsgs]

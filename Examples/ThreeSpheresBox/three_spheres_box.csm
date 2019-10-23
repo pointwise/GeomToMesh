@@ -12,6 +12,8 @@ sphere    -1   0   0   0.5
 attribute PW:Name   $FrontSphere
 attribute PW:WallSpacing   0.001
 attribute PW:DomainAlgorithm   $Delaunay
+attribute PW:DomainAdaptTarget $true
+attribute PW:DomainAdaptSource $true
 subtract  none   1   0
 
 sphere    1   0   0   0.5
@@ -19,15 +21,18 @@ attribute PW:Name   $MidSphere
 attribute PW:WallSpacing   0.005
 attribute PW:DomainIsoType   $TriangleQuad
 attribute PW:DomainAlgorithm   $AdvancingFrontOrtho
+attribute PW:DomainAdaptTarget $true
+attribute PW:DomainAdaptSource $true
 subtract  none   1   0
 
 sphere    3   0   0   0.5
 attribute PW:Name   $BackSphere
 attribute PW:WallSpacing   0.001
 attribute PW:DomainAlgorithm   $AdvancingFront
+attribute PW:DomainAdaptTarget $true
+attribute PW:DomainAdaptSource $true
 subtract  none   1   0
 
-dump      /home/skarman/Documents/Cases/Box/three_spheres_box.egads   0   0
-dump      /home/skarman/Documents/Cases/Box/three_spheres_box.iges   0   0
+dump      /Users/skarman/Documents/Cases/Box/three_spheres_box.egads   0   0
 
 end

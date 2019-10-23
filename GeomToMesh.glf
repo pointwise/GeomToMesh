@@ -44,28 +44,24 @@
 #    ------------------------------   |   --------------------------
 #                |                    |                |
 #    ------------------------------   |   --------------------------
-#   |   Setup periodic domains     |  |  |  Apply block attributes  |
+#   | Merge duplicate connectors   |  |  |  Apply block attributes  |
 #    ------------------------------   |   --------------------------
 #                |                    |                |
 #    ------------------------------   |   --------------------------
-#   | Merge duplicate connectors   |  |  |     Set up 3D T-Rex      |
+#   |        Join connectors       |  |  |     Set up 3D T-Rex      |
 #    ------------------------------   |   --------------------------
 #                |                    |                |
 #    ------------------------------   |   --------------------------
-#   |        Join connectors       |  |  |     Initialize Block     |
-#    ------------------------------       --------------------------
-#                |                    |                |
-#    ------------------------------   |   --------------------------
-#   | Reduce connector dimension   |  |  |     Export CAE File      |
+#   | Reduce connector dimension   |  |  |     Initialize Block     |
 #   |  using avg sp and minDim     |  |   --------------------------
 #    ------------------------------   |                |
 #                |                    |   --------------------------
-#    ------------------------------   |  |          FINISH          |
+#    ------------------------------   |  |     Export CAE File      |
 #   |  Process baffle geometries   |  |   --------------------------
-#    ------------------------------   |
-#                |                    |
-#    ------------------------------   |
-#   | Increase connector dimension |  |
+#    ------------------------------   |                |
+#                |                    |   --------------------------
+#    ------------------------------   |  |          FINISH          |
+#   | Increase connector dimension |  |   --------------------------   
 #   |  using deviation or turning  |  |
 #    ------------------------------   |
 #                |                    |
@@ -81,6 +77,10 @@
 #    ------------------------------   |
 #   |  Adjust connector dimension  |  |
 #   |  using applied end spacing   |  |
+#    ------------------------------   |
+#                |                    |
+#    ------------------------------   |
+#   |   Setup periodic domains     |  |
 #    ------------------------------   |
 #                |                    |
 #                ---------------------
@@ -171,60 +171,64 @@ proc geomtomesh { } {
     # echo PW defaults
     puts "GeomToMesh: Defaults"
     puts "Connector level"
-    puts "    InitDim              = $conParams(InitDim)"
-    puts "    MaxDim               = $conParams(MaxDim)"
-    puts "    MinDim               = $conParams(MinDim)"
-    puts "    TurnAngle            = $conParams(TurnAngle)"
-    puts "    Deviation            = $conParams(Deviation)"
-    puts "    SplitAngle           = $conParams(SplitAngle)"
-    puts "    ProxGrowthRate       = $conParams(ProxGrowthRate)"
-    puts "    AdaptSources         = $conParams(AdaptSources)"
-    puts "    SourceSpacing        = $conParams(SourceSpacing)"
-    puts "    TurnAngleHard        = $conParams(TurnAngleHard)"
+    puts "    InitDim                  = $conParams(InitDim)"
+    puts "    MaxDim                   = $conParams(MaxDim)"
+    puts "    MinDim                   = $conParams(MinDim)"
+    puts "    TurnAngle                = $conParams(TurnAngle)"
+    puts "    Deviation                = $conParams(Deviation)"
+    puts "    SplitAngle               = $conParams(SplitAngle)"
+    puts "    JoinCons                 = $conParams(JoinCons)"
+    puts "    ProxGrowthRate           = $conParams(ProxGrowthRate)"
+    puts "    SourceSpacing            = $conParams(SourceSpacing)"
+    puts "    TurnAngleHard            = $conParams(TurnAngleHard)"
     puts "Domain level"
-    puts "    Algorithm            = $domParams(Algorithm)"
-    puts "    FullLayers           = $domParams(FullLayers)"
-    puts "    MaxLayers            = $domParams(MaxLayers)"
-    puts "    GrowthRate           = $domParams(GrowthRate)"
-    puts "    IsoType              = $domParams(IsoType)"
-    puts "    TRexType             = $domParams(TRexType)"
-    puts "    TRexARLimit          = $domParams(TRexARLimit)"
-    puts "    Decay                = $domParams(Decay)"
-    puts "    MinEdge              = $domParams(MinEdge)"
-    puts "    MaxEdge              = $domParams(MaxEdge)"
-    puts "    Adapt                = $domParams(Adapt)"
+    puts "    Algorithm                = $domParams(Algorithm)"
+    puts "    FullLayers               = $domParams(FullLayers)"
+    puts "    MaxLayers                = $domParams(MaxLayers)"
+    puts "    GrowthRate               = $domParams(GrowthRate)"
+    puts "    IsoType                  = $domParams(IsoType)"
+    puts "    TRexType                 = $domParams(TRexType)"
+    puts "    TRexARLimit              = $domParams(TRexARLimit)"
+    puts "    TRexAngleBC              = $domParams(TRexAngleBC)"
+    puts "    Decay                    = $domParams(Decay)"
+    puts "    MinEdge                  = $domParams(MinEdge)"
+    puts "    MaxEdge                  = $domParams(MaxEdge)"
+    puts "    Adapt                    = $domParams(Adapt)"
+    puts "    WallSpacing              = $domParams(WallSpacing)"
     puts "Block level"
-    puts "    Algorithm            = $blkParams(Algorithm)"
-    puts "    VoxelLayers          = $blkParams(VoxelLayers)"
-    puts "    boundaryDecay        = $blkParams(boundaryDecay)"
-    puts "    collisionBuffer      = $blkParams(collisionBuffer)"
-    puts "    maxSkewAngle         = $blkParams(maxSkewAngle)"
-    puts "    edgeMaxGrowthRate    = $blkParams(edgeMaxGrowthRate)"
-    puts "    fullLayers           = $blkParams(fullLayers)"
-    puts "    maxLayers            = $blkParams(maxLayers)"
-    puts "    growthRate           = $blkParams(growthRate)"
-    puts "    TRexType             = $blkParams(TRexType)"
-    puts "    volInitialize        = $blkParams(volInitialize)"
+    puts "    Algorithm                = $blkParams(Algorithm)"
+    puts "    VoxelLayers              = $blkParams(VoxelLayers)"
+    puts "    boundaryDecay            = $blkParams(boundaryDecay)"
+    puts "    collisionBuffer          = $blkParams(collisionBuffer)"
+    puts "    maxSkewAngle             = $blkParams(maxSkewAngle)"
+    puts "    edgeMaxGrowthRate        = $blkParams(edgeMaxGrowthRate)"
+    puts "    fullLayers               = $blkParams(fullLayers)"
+    puts "    maxLayers                = $blkParams(maxLayers)"
+    puts "    growthRate               = $blkParams(growthRate)"
+    puts "    TRexType                 = $blkParams(TRexType)"
+    puts "    volInitialize            = $blkParams(volInitialize)"
     puts "General"
-    puts "    SkipMeshing          = $genParams(SkipMeshing)"
-    puts "    CAESolver            = $genParams(CAESolver)"
-    puts "    outerBoxScale        = $genParams(outerBoxScale)"
-    puts "    sourceBoxLengthScale = $genParams(sourceBoxLengthScale)"
-    puts "    sourceBoxDirection   = $genParams(sourceBoxDirection)"
-    puts "    sourceBoxAngle       = $genParams(sourceBoxAngle)"
-    puts "    sourceGrowthFactor   = $genParams(sourceGrowthFactor)"
-    puts "    ModelSize            = $genParams(ModelSize)"
-    puts "    writeGMA             = $genParams(writeGMA)"
-    puts "    assembleTolMult      = $genParams(assembleTolMult)"
+    puts "    SkipMeshing              = $genParams(SkipMeshing)"
+    puts "    CAESolver                = $genParams(CAESolver)"
+    puts "    outerBoxScale            = $genParams(outerBoxScale)"
+    puts "    sourceBoxLengthScale     = $genParams(sourceBoxLengthScale)"
+    puts "    sourceBoxDirection       = $genParams(sourceBoxDirection)"
+    puts "    sourceBoxAngle           = $genParams(sourceBoxAngle)"
+    puts "    sourceGrowthFactor       = $genParams(sourceGrowthFactor)"
+    puts "    sourcePCDFile            = $genParams(sourcePCDFile)"
+    puts "    ModelSize                = $genParams(ModelSize)"
+    puts "    writeGMA                 = $genParams(writeGMA)"
+    puts "    assembleTolMult          = $genParams(assembleTolMult)"
+    puts "    modelOrientIntMeshVolume = $genParams(modelOrientIntoMeshVolume)"
     puts "Elevate On Export"
-    puts "    degree               = $eoeParams(degree)"
-    puts "    costThreshold        = $eoeParams(costThreshold)"
-    puts "    maxIncAngle          = $eoeParams(maxIncAngle)"
-    puts "    relax                = $eoeParams(relax)"
-    puts "    smoothingPasses      = $eoeParams(smoothingPasses)"
-    puts "    WCNWeight            = $eoeParams(WCNWeight)"
-    puts "    WCNMode              = $eoeParams(WCNMode)"
-    puts "    writeVTU             = $eoeParams(writeVTU)"
+    puts "    degree                   = $eoeParams(degree)"
+    puts "    costThreshold            = $eoeParams(costThreshold)"
+    puts "    maxIncAngle              = $eoeParams(maxIncAngle)"
+    puts "    relax                    = $eoeParams(relax)"
+    puts "    smoothingPasses          = $eoeParams(smoothingPasses)"
+    puts "    WCNWeight                = $eoeParams(WCNWeight)"
+    puts "    WCNMode                  = $eoeParams(WCNMode)"
+    puts "    writeVTU                 = $eoeParams(writeVTU)"
 
     # set default parameters
     if { $conParams(MinDim) > $conParams(InitDim) } {
@@ -249,6 +253,13 @@ proc geomtomesh { } {
     if { 0.0 < $domParams(MaxEdge) } {
         pw::DomainUnstructured setDefault EdgeMaximumLength $domParams(MaxEdge)
     }
+    if { 0 < $domParams(FullLayers) } {
+        pw::DomainUnstructured setDefault TRexFullLayers $domParams(FullLayers)
+    }
+    if { 0 < $domParams(MaxLayers) } {
+        pw::DomainUnstructured setDefault TRexMaximumLayers $domParams(MaxLayers)
+    }
+    pw::DomainUnstructured setDefault TRexGrowthRate $domParams(GrowthRate)
 
     pw::BlockUnstructured setDefault EdgeMaximumGrowthRate $blkParams(edgeMaxGrowthRate)
     pw::GridEntity setDefault SizeFieldDecay $blkParams(boundaryDecay)
@@ -391,14 +402,6 @@ proc geomtomesh { } {
     }
     puts [format "Tolerance = %.6g" $tol]
 
-    #    ------------------------------
-    #   |   Setup periodic domains     |
-    #    ------------------------------
-
-    set targetDomList [list]
-    setupPeriodicDomains $tol targetDomList
-    puts "Number of periodic target domains = [llength $targetDomList]"
-
     #    ----------------------------
     #   | Merge duplicate connectors |
     #    ----------------------------
@@ -423,9 +426,11 @@ proc geomtomesh { } {
     #    -------------------------
 
     # perform join operation and eliminate breakpoints
-    if { 0 < [joinConnectors $conParams(SplitAngle)] } {
-        set conList [pw::Grid getAll -type pw::Connector]
-        puts "After join, connector list has [llength $conList] entries."
+    if { 1 == $conParams(JoinCons) } {
+        if { 0 < [joinConnectors $conParams(SplitAngle)] } {
+            set conList [pw::Grid getAll -type pw::Connector]
+            puts "After join, connector list has [llength $conList] entries."
+        }
     }
 
     pw::Display update
@@ -440,6 +445,7 @@ proc geomtomesh { } {
     #   | using avg sp and minDim     |
     #    -----------------------------
 
+    set conList [pw::Grid getAll -type pw::Connector]
     reduceConnectorDimensionFromAvgSpacing $conParams(MinDim) $conParams(MaxDim) $conList nodeList nodeSpacing
 
     puts "Number of unique endpoints = [llength $nodeList]"
@@ -456,7 +462,8 @@ proc geomtomesh { } {
     }
 
     #  initialize domain T-Rex flag for connectors
-    set conTRex [list]
+    set softconTRex [list]
+    set hardconTRex [list]
 
     #    ------------------------------
     #   | Increase connector dimension |
@@ -464,9 +471,10 @@ proc geomtomesh { } {
     #   | Set connector TRex flag      |
     #    ------------------------------
 
+    set conList [pw::Grid getAll -type pw::Connector]
     if { 0.0 < $conParams(Deviation) || 0.0 < $conParams(TurnAngle) || 0.0 < $conParams(TurnAngleHard) } {
         increaseConnectorDimensionFromAngleDeviation $conList $conParams(MaxDim) $conParams(TurnAngle) \
-            $conParams(Deviation) $conParams(TurnAngleHard) nodeList nodeSpacing conTRex
+            $conParams(Deviation) $conParams(TurnAngleHard) nodeList nodeSpacing softconTRex hardconTRex
     }
 
     pw::Display update
@@ -526,12 +534,20 @@ proc geomtomesh { } {
     }
 
     connectorDimensionFromEndSpacing $blkParams(edgeMaxGrowthRate) $conParams(MinDim) $conParams(MaxDim) \
-        $conList $conMaxDS $tAR $nodeList $nodeSpacing $conTRex
+        $conList $conMaxDS $tAR $nodeList $nodeSpacing $softconTRex $hardconTRex
 
     pw::Display update
 
     set domList [pw::Grid getAll -type pw::DomainUnstructured]
     puts "Domain list has [llength $domList] entries."
+
+    #    ------------------------------
+    #   |   Setup periodic domains     |
+    #    ------------------------------
+
+    set targetDomList [list]
+    setupPeriodicDomains $tol targetDomList
+    puts "Number of periodic target domains = [llength $targetDomList]"
 
     if { 0 < [llength $targetDomList] } {
         # reconstruct domain list minus target domain list
@@ -544,6 +560,14 @@ proc geomtomesh { } {
             }
         }
         puts "After removing target domains, domains list has [llength $domList] entries."
+
+        # Performing regular merge on connectors
+        set mergeMode [pw::Application begin Merge]
+            $mergeMode mergeConnectors -visibleOnly -exclude None -tolerance $tol
+        $mergeMode end
+
+        puts "After another regular merge, connector list has [pw::Grid getCount -type pw::Connector] entries."
+        set conList [pw::Grid getAll -type pw::Connector]
     }
 
     if { [llength $domList] == 0 } {
@@ -567,8 +591,7 @@ proc geomtomesh { } {
 
     # set up domain T-Rex using end point spacing values
     if { 0 < $domParams(MaxLayers) } {
-        setup2DTRexBoundaries $domList $domParams(FullLayers) $domParams(MaxLayers) $domParams(GrowthRate) \
-        $domParams(Decay) $domParams(TRexARLimit) $conTRex
+        setup2DTRexBoundaries $domList $domParams(TRexARLimit) $softconTRex $hardconTRex
     }
 
     #    ----------------------------------
@@ -582,7 +605,6 @@ proc geomtomesh { } {
     }
 
     foreach dom $domList {
-        $dom setUnstructuredSolverAttribute BoundaryDecay $domParams(Decay)
         $dom setUnstructuredSolverAttribute SwapCellsWithNoInteriorPoints True
         $dom setUnstructuredSolverAttribute TRexIsoTropicHeight [expr sqrt(3.0) / 2.0 ]
     }
@@ -664,6 +686,20 @@ proc geomtomesh { } {
             $genParams(sourceGrowthFactor) $blkParams(boundaryDecay) $bgsp
     }
 
+    # Read PCD source file if specified
+    if { "" != $genParams(sourcePCDFile) } {
+        puts "Loading source file: $genParams(sourcePCDFile)"
+        if { [catch { set smode [pw::Application begin SourceImport] } ] } {
+            puts " Source Import not supported in this version of Pointwise."
+        } else {
+            $smode initialize -strict -type Automatic $genParams(sourcePCDFile)
+            $smode read
+            $smode convert
+            $smode end
+            unset smode
+        }
+    }
+
     pw::Display update
 
     # Add baffles to block
@@ -697,8 +733,8 @@ proc geomtomesh { } {
             if { 0.0 < $blkParams(maxSkewAngle) && 180.0 > $blkParams(maxSkewAngle) } {
                 $uBlk setUnstructuredSolverAttribute TRexSkewCriteriaMaximumAngle $blkParams(maxSkewAngle)
             }
-            if { [catch { $uBlk setUnstructuredSolverAttribute FieldVolumeAlgorithm $blkParams(Algorithm) }] } {
-                puts "  Solver FieldVolumeAlgorithm not supported in this version of Pointwise."
+            if { [catch { $uBlk setUnstructuredSolverAttribute InteriorAlgorithm $blkParams(Algorithm) }] } {
+                puts "  Solver InteriorAlgorithm not supported in this version of Pointwise."
             }
             if { [catch { $uBlk setUnstructuredSolverAttribute VoxelTransitionLayers $blkParams(VoxelLayers) }] } {
                 puts "  Solver Voxel Transition Layers attribute not supported in this version of Pointwise."
@@ -729,8 +765,8 @@ proc geomtomesh { } {
             $uBlk setUnstructuredSolverAttribute IterationCount 11
             $uBlk setSizeFieldCalculationMethod MinimumValue
 
-            if { 0 != $conParams(AdaptSources) } {
-                setupConAdapt $uBlk $domParams(Adapt)
+            if { 0 != $domParams(Adapt) } {
+                setupDomAdapt $uBlk $domParams(Adapt)
             }
 
         $solveMode end

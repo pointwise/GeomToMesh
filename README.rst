@@ -54,6 +54,11 @@ reside in the same directory as GeomToMesh.glf, including:
 Additionally, the script *QuiltToSurfMesh.glf* can be used to perform
 quilt-based surface meshing only.
 
+The script *RefineByFactor.glf* can be used to refine or coarsen the current mesh
+in memory. The factor is defined at the top of the script. This can be used
+on meshes created with *GeomToMesh.glf* or *QuiltToSurfMesh.glf* in a process
+to create a mesh sequence.
+
 GUI
 ---
 
@@ -203,7 +208,8 @@ Note: Preceding $ indicates it is a literal character string
 |                            |                                  |             |This domain will be deleted before the creation of the  |
 |                            |                                  |             |periodic domain.                                        |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
-|``PW:WallSpacing``          |``> 0.0``                         |``Face``     |Viscous normal spacing for T-Rex extrusion.             |
+|``PW:WallSpacing``          |``$Wall or > 0.0``                |``Face``     |Viscous normal spacing for T-Rex extrusion. $Wall uses  |
+|                            |                                  |             |domParams(WallSpacing)                                  |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
 |``PW:TRexIsoHeight``        |``> 0.0``                         |``Model``    |Isotropic height for volume T-Rex cells. Default is 1.0.|
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
@@ -297,6 +303,21 @@ is a geometric face that represents the intended periodic partner domain, it
 must be attributed with PW:PeriodicTarget and a value of "true". The domain
 automatically created for this geometric face will be replaced with the
 periodic domain copy through the designated transformation.
+
+Source Adaptation
+-----------------
+
+A supplemental source points file can be specified using the parameter
+genParams(SourcePCDFile) in the UserDefaults.glf file. This is the name of a
+Point Cloud Data (PCD) file containing points in space and a desired element
+size. An example file is provided in the ThreeSpheresBox example directory.
+The entries for each point include the three coordinates, a spacing value,
+and a decay value. The decay value is optional. If not specified the default
+background decay will be used. The intent is to permit solution based
+adaptation.  The PCD file can be manually created or created from a flow
+solution, either using feature-based or output-based (adjoint) adaptation
+techniques. This is left up to the user. These points will be added to the
+sources and used to adapt the domains and volume mesh.
 
 Reference
 ~~~~~~~~~

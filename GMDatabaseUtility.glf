@@ -48,6 +48,19 @@ proc toLink { ent } {
     return mkEntLink $ent $title
 }
 
+proc mkXYZLink { xyz } {
+   if {[llength $xyz] != 3} { return $xyz }
+   
+   set xyzStr [format "%9.3e %9.3e %9.3e" [lindex $xyz 0] [lindex $xyz 1] [lindex $xyz 2]]
+   if [pw::Application isInteractive] {
+        return "<a href='pwpnt://pwi.app?loc=$xyz'>$xyzStr</a>"
+   } else {
+        # just return the XYZ for batch mode
+        return $xyz
+   }
+}
+
+
 # ----------------------------------------------
 # Create names for given entities
 # ----------------------------------------------
@@ -298,6 +311,131 @@ proc maxDBEdgeTolerance { } {
     puts [format "  Maximum DB edge tolerance = %.6g" $tol]
     return $tol
 }
+
+proc getAssembleToleranceForCon {con} {
+    if {![HaveConAssembleTolerance]} { return 0.0 }
+    return [$con getAssembleTolerance]
+}
+
+#
+# PROC: getObjectCmds
+# Return a list of all static or instance commands for an object
+#
+# Example usage:
+#   getObjectCmds pw::Connector 0 - returns list of static commands for pw::Connector
+#   getObjectCmds pw::Connector 1 - returns list of instance commands for pw::Connector object
+#
+proc getObjectCmds { obj {instanceCommands 0}} {
+    if {$instanceCommands} {
+        set obj [$obj create]
+    }
+    catch {$obj _foo_} msg
+    if {$instanceCommands} {
+        $obj delete
+    }
+    set cmds [list]
+    foreach s [lreplace [lreplace $msg 0 6] end-1 end-1] {
+        lappend cmds [string trimright $s ","]
+    }
+    return $cmds
+}
+
+
+proc HaveConAssembleTolerance {} {
+    global conData
+    
+    if {[info exists conData(haveAssembleTolCmd)]} {
+        return $conData(haveAssembleTolCmd)
+    }
+
+    set conData(haveAssembleTolCmd) 0
+    set conCmds [getObjectCmds pw::Connector 1]
+    
+    set ind [lsearch -exact $conCmds "getAssembleTolerance"]
+    if {$ind != -1} {
+        set conData(haveAssembleTolCmd) 1
+    }
+
+    return $conData(haveAssembleTolCmd)
+}
+
+
+proc getAssembleToleranceForCons {} {
+    global conData
+    
+    set conData(minAssembleTol) 1e99
+    set conData(maxAssembleTol) -1.0
+    set conList [pw::Grid getAll -type pw::Connector]
+    foreach con $conList {
+        if {![info exists conData($con,assembleTol)]} {
+            set conData($con,assembleTol) [getAssembleToleranceForCon $con]
+        }
+        if {$conData(minAssembleTol) > $conData($con,assembleTol)} {
+            set conData(minAssembleTol) $conData($con,assembleTol)
+            set conData(minAssembleTolCon) $con
+        }
+        if {$conData(maxAssembleTol) < $conData($con,assembleTol)} {
+            set conData(maxAssembleTol) $conData($con,assembleTol)
+            set conData(maxAssembleTolCon) $con
+        }
+    }
+    puts "Min Edge Tol: [format "%9.3e" $conData(minAssembleTol)] on [mkEntLink $conData(minAssembleTolCon)]"
+    puts "Max Edge Tol: [format "%9.3e" $conData(maxAssembleTol)] on [mkEntLink $conData(maxAssembleTolCon)]"
+}
+
+proc displayConAssembleTol {} {
+    global conData
+    
+    if {![HaveConAssembleTolerance]} { return 0 }
+    
+    set conList [pw::Grid getAll -type pw::Connector]
+    foreach con $conList {
+        $con setRenderAttribute ColorMode Entity
+        $con setRenderAttribute LineWidth 3
+        $con setColor [scalarColor $conData($con,assembleTol) $conData(minAssembleTol) $conData(maxAssembleTol)]
+        
+        set tol [format "%5.1e" $conData($con,assembleTol)]
+        set name [$con getName]
+        append name "_$tol"
+        $con setName $name
+    }    
+    return 1
+}
+
+# Determine color of a scalar value in blue-red rainbow color map
+proc scalarColor {value minVal maxVal} {
+    if {$value < $minVal} {
+        # below range
+        return "0.0 0.0 1.0"
+    }
+    if {$value > $maxVal} {
+        # above range
+        return "1.0 0.0 0.0"
+    }
+   
+    set s [expr ($value - $minVal) / ($maxVal - $minVal)]
+
+    if {$s <= 0.25} {
+        set r 0.0
+        set g [expr  $s / 0.25]
+        set b 1.0
+    } elseif {$s <= 0.5} {
+        set r 0.0
+        set g 1.0
+        set b [expr (0.5 - $s) / 0.25]
+    } elseif {$s <= 0.75} {
+        set r [expr ($s - 0.5) / 0.25]
+        set g 1.0
+        set b 0.0
+    } else {
+        set r 1.0
+        set g [expr (1.0 - $s) / 0.25]
+        set b 0.0
+    }
+    return "$r $g $b"
+}
+
+
 
 # DISCLAIMER:
 # TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, POINTWISE DISCLAIMS

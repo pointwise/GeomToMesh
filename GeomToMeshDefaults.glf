@@ -25,8 +25,8 @@ set conParams(MinDim)                            4; # Minimum connector dimensio
 set conParams(TurnAngle)                       0.0; # Maximum turning angle on connectors for dimensioning (0 - not used)
 set conParams(Deviation)                       0.0; # Maximum deviation on connectors for dimensioning (0 - not used)
 set conParams(SplitAngle)                      0.0; # Turning angle on connectors to split (0 - not used)
+set conParams(JoinCons)                          1; # Perform joining operation on 2 connectors at one endpoint
 set conParams(ProxGrowthRate)                  1.3; # Connector proximity growth rate
-set conParams(AdaptSources)                      0; # Compute sources using connectors (0 - not used) V18.2+ (experimental)
 set conParams(SourceSpacing)                     0; # Use source cloud for adaptive pass on connectors V18.2+
 set conParams(TurnAngleHard)                  70.0; # Hard edge turning angle limit for domain T-Rex (0.0 - not used)
 
@@ -38,10 +38,12 @@ set domParams(GrowthRate)                      1.3; # Domain growth rate for 2D 
 set domParams(IsoType)                  "Triangle"; # Domain iso cell type (Triangle or TriangleQuad)
 set domParams(TRexType)                 "Triangle"; # Domain T-Rex cell type (Triangle or TriangleQuad)
 set domParams(TRexARLimit)                   200.0; # Domain T-Rex maximum aspect ratio limit (0 - not used)
+set domParams(TRexAngleBC)                       0; # Domain T-Rex spacing from surface curvature
 set domParams(Decay)                           0.5; # Domain boundary decay
 set domParams(MinEdge)                         0.0; # Domain minimum edge length
 set domParams(MaxEdge)                         0.0; # Domain maximum edge length
-set domParams(Adapt)                             0; # Set up all domains for adaptation (0 - not used) V18.2+ (experimental)
+set domParams(Adapt)                             0; # Set up domains marked as source or target from geometry
+set domParams(WallSpacing)                     0.0; # defined spacing when geometry attributed with $wall
 
 # Block level
 set blkParams(Algorithm)                "Delaunay"; # Isotropic (Delaunay, Voxel) (V18.3+)
@@ -64,9 +66,11 @@ set genParams(sourceBoxLengthScale)            0.0; # Length scale of enclosed v
 set genParams(sourceBoxDirection)        { 1 0 0 }; # Principal direction vector (i.e. normalized freestream vector)
 set genParams(sourceBoxAngle)                  0.0; # Angle for widening source box in the assigned direction
 set genParams(sourceGrowthFactor)             10.0; # Growth rate for spacing value along box
+set genParams(sourcePCDFile)                    ""; # File name containing source spacing data in PCD format
 set genParams(ModelSize)                         0; # Set model size before CAD import (0 - get from file)
 set genParams(writeGMA)                     "true"; # Write out geometry-mesh associativity file (true or false)
 set genParams(assembleTolMult)                 1.0; # Multiplier on model assembly tolerance for allowed MinEdge
+set genParams(modelOrientIntoMeshVolume)         1; # Whether the model is oriented so normals point into the mesh
 
 # Elevate On Export V18.2+
 set eoeParams(degree)                           Q1; # Polynomial degree (Q1, Q2, Q3 or Q4) NOTE: ONLY APPLIES TO CGNS AND GMSH

@@ -205,13 +205,13 @@ Note: Preceding $ indicates it is a literal character string
 |                            |                                  |             |This domain will be deleted before the creation of the  |
 |                            |                                  |             |periodic domain.                                        |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
-|``PW:DomainAdaptSource      |``$true or $false``               |``Face``     |Set domain up for adaptation as a source.               |
+|``PW:DomainAdaptSource``    |``$true or $false``               |``Face``     |Set domain up for adaptation as a source.               |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
-|``PW:DomainAdaptTarget      |``$true or $false``               |``Face``     |Set domain up for adaptation as a target.               |
+|``PW:DomainAdaptTarget``    |``$true or $false``               |``Face``     |Set domain up for adaptation as a target.               |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
-|``PW:DomainShapeConstraint  |``$DataBase or $Free              |``Face``     |Set domain shape constraint.                            |
+|``PW:DomainShapeConstraint``|``$DataBase or $Free``            |``Face``     |Set domain shape constraint.                            |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
-|``PW:DomainBlunt            |``$true or $false                 |``Face``     |Flag the domain as blunt for special dimension handling.|
+|``PW:DomainBlunt``          |``$true or $false``               |``Face``     |Flag the domain as blunt for special dimension handling.|
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
 |``PW:WallSpacing``          |``$Wall or > 0.0``                |``Face``     |Viscous normal spacing for T-Rex extrusion. $Wall uses  |
 |                            |                                  |             |domParams(WallSpacing)                                  |
@@ -248,7 +248,7 @@ Note: Preceding $ indicates it is a literal character string
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
 |``PW:ConnectorMaxDeviation``|``[ 0, infinity )``               |``Edge``     |Connector Maximum Deviation. (0.0 = NOT APPLIED)        |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
-|``PW:ConnectorAdaptSource ``|``$true or $false``               |``Edge``     |Set connector up for adaptation as a source.            |
+|``PW:ConnectorAdaptSource`` |``$true or $false``               |``Edge``     |Set connector up for adaptation as a source.            |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
 |``PW:NodeSpacing``          |``> 0.0``                         |``Node``     |Specified connector endpoint spacing for a node.        |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+

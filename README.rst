@@ -45,19 +45,16 @@ The main script is *GeomToMesh.glf*. It can be used either in batch mode from
 the command line, or in the Pointwise GUI. All of the support scripts must
 reside in the same directory as GeomToMesh.glf, including:
 
-- GeomToMeshDefaults.glf -- Default parameter values that control the meshing process.
-- GMDatabaseUtility.glf  -- Functions used for accessing geometry and retrieving attributes.
-- GMUtility.glf          -- Functions for performing various meshing operations.
-- GMSafeUtility.glf      -- Functions for isolating loading of user-defined parameter files to prevent malicious commands from being executed by the master script.
-- GMMeshParamCoords.glf  -- Functions for creating and writing Geometry to Mesh Associativity (GMA) files.
-
-Additionally, the script *QuiltToSurfMesh.glf* can be used to perform
-quilt-based surface meshing only.
+- GeomToMeshDefaults.glf  -- Default parameter values that control the meshing process.
+- GMDatabaseUtility.glf   -- Functions used for accessing geometry and retrieving attributes.
+- GMUtility.glf           -- Functions for performing various meshing operations.
+- GMSafeUtility.glf       -- Functions for isolating loading of user-defined parameter files to prevent malicious commands from being executed by the master script.
+- GMMeshParamCoords.glf   -- Functions for creating and writing Geometry to Mesh Associativity (GMA) files.
+- GMMeshParamCoordsV2.glf -- Functions for creating and writing Geometry to Mesh Associativity (GMA) version 2 files.
 
 The script *RefineByFactor.glf* can be used to refine or coarsen the current mesh
 in memory. The factor is defined at the top of the script. This can be used
-on meshes created with *GeomToMesh.glf* or *QuiltToSurfMesh.glf* in a process
-to create a mesh sequence.
+on meshes created with *GeomToMesh.glf* in a process to create a mesh sequence.
 
 GUI
 ---
@@ -208,6 +205,14 @@ Note: Preceding $ indicates it is a literal character string
 |                            |                                  |             |This domain will be deleted before the creation of the  |
 |                            |                                  |             |periodic domain.                                        |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
+|``PW:DomainAdaptSource      |``$true or $false``               |``Face``     |Set domain up for adaptation as a source.               |
++----------------------------+----------------------------------+-------------+--------------------------------------------------------+
+|``PW:DomainAdaptTarget      |``$true or $false``               |``Face``     |Set domain up for adaptation as a target.               |
++----------------------------+----------------------------------+-------------+--------------------------------------------------------+
+|``PW:DomainShapeConstraint  |``$DataBase or $Free              |``Face``     |Set domain shape constraint.                            |
++----------------------------+----------------------------------+-------------+--------------------------------------------------------+
+|``PW:DomainBlunt            |``$true or $false                 |``Face``     |Flag the domain as blunt for special dimension handling.|
++----------------------------+----------------------------------+-------------+--------------------------------------------------------+
 |``PW:WallSpacing``          |``$Wall or > 0.0``                |``Face``     |Viscous normal spacing for T-Rex extrusion. $Wall uses  |
 |                            |                                  |             |domParams(WallSpacing)                                  |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
@@ -243,6 +248,8 @@ Note: Preceding $ indicates it is a literal character string
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
 |``PW:ConnectorMaxDeviation``|``[ 0, infinity )``               |``Edge``     |Connector Maximum Deviation. (0.0 = NOT APPLIED)        |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
+|``PW:ConnectorAdaptSource ``|``$true or $false``               |``Edge``     |Set connector up for adaptation as a source.            |
++----------------------------+----------------------------------+-------------+--------------------------------------------------------+
 |``PW:NodeSpacing``          |``> 0.0``                         |``Node``     |Specified connector endpoint spacing for a node.        |
 +----------------------------+----------------------------------+-------------+--------------------------------------------------------+
 
@@ -250,7 +257,7 @@ Note: Preceding $ indicates it is a literal character string
 Future Enhancements
 ~~~~~~~~~~~~~~~~~~~
 
-Pointwise versions 18.3 and higher will provide tools to allow users to
+Pointwise versions 18.3 and higher provides tools to allow users to
 edit/add attributes to geometry within the GUI. The geometry can then be
 exported as an NMB file (Pointwise native geometry) and then processed
 by the GeomToMesh scripts. 

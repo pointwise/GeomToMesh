@@ -1,25 +1,17 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 # 
 # This sample Pointwise script is not supported by Pointwise, Inc.
 # It is provided freely for demonstration purposes only.  
 # SEE THE WARRANTY DISCLAIMER AT THE BOTTOM OF THIS FILE.
 
-# ========================================================================================
-# GeomToMesh: Defaults
-# ========================================================================================
 #
-# Initialize global variables defaults. These parameters control
-# the operation of GeomToMesh and affect the final mesh.
-#
-# Note: Do not modify this file directly. Instead, make a copy and
-# adjust parameters as needed. Customized settings will be sourced
-# after this file, so only the changed values need to be present.
+# Override global variables defaults for juncture flow example
 #
 
 # Connector level
-set conParams(InitDim)                          8; # Initial connector dimension
+set conParams(InitDim)                           8; # Initial connector dimension
 set conParams(MaxDim)                         1024; # Maximum connector dimension
 set conParams(MinDim)                            5; # Minimum connector dimension
 set conParams(TurnAngle)                   8.00000; # Maximum turning angle on connectors for dimensioning (0 - not used)
@@ -37,12 +29,12 @@ set domParams(MaxLayers)                        20; # Domain maximum layers
 set domParams(GrowthRate)                      1.2; # Domain growth rate for 2D T-Rex extrusion
 set domParams(IsoType)                  "Triangle"; # Domain iso cell type (Triangle or TriangleQuad)
 set domParams(TRexType)                 "Triangle"; # Domain T-Rex cell type (Triangle or TriangleQuad)
-set domParams(TRexARLimit)                   10.0; # Domain T-Rex maximum aspect ratio limit (0 - not used)
+set domParams(TRexARLimit)                    10.0; # Domain T-Rex maximum aspect ratio limit (0 - not used)
 set domParams(TRexAngleBC)                       0; # Domain T-Rex spacing from surface curvature
-set domParams(Decay)                          0.80; # Domain boundary decay
+set domParams(Decay)                          0.70; # Domain boundary decay
 set domParams(MinEdge)                         0.0; # Domain minimum edge length
 set domParams(MaxEdge)                         0.0; # Domain maximum edge length
-set domParams(Adapt)                             0; # Set up domains marked as source or target from geometry
+set domParams(Adapt)                             1; # Set up domains marked as source or target from geometry
 set domParams(WallSpacing)              0.00243000; # defined spacing when geometry attributed with $wall
 
 # Block level
@@ -62,12 +54,12 @@ set blkParams(volInitialize)                     1; # Initialize block after set
 set genParams(SkipMeshing)                       1; # Skip meshing of domains during interim processing (V18.3+)
 set genParams(CAESolver)                    "CGNS"; # Selected CAE Solver (Currently support CGNS, Gmsh and UGRID)
 set genParams(outerBoxScale)                   0.0; # Enclose geometry in box with specified scale (0 - no box)
-set genParams(sourceBoxLengthScale)            0.0; # Length scale of enclosed viscous walls in source box (0 - no box)
+set genParams(sourceBoxLengthScale)           10.0; # Length scale of enclosed viscous walls in source box (0 - no box)
 set genParams(sourceBoxDirection)        { 1 0 0 }; # Principal direction vector (i.e. normalized freestream vector)
-set genParams(sourceBoxAngle)                  0.0; # Angle for widening source box in the assigned direction
+set genParams(sourceBoxAngle)                  5.0; # Angle for widening source box in the assigned direction
 set genParams(sourceGrowthFactor)             10.0; # Growth rate for spacing value along box
-set genParams(ModelSize)                    10000; # Set model size before CAD import (0 - get from file)
-set genParams(writeGMA)                     "false"; # Write out geometry-mesh associativity file (true or false)
+set genParams(ModelSize)                     10000; # Set model size before CAD import (0 - get from file)
+set genParams(writeGMA)                    "false"; # Write out geometry-mesh associativity file (true or false)
 set genParams(assembleTolMult)                 1.0; # Multiplier on model assembly tolerance for allowed MinEdge
 set genParams(modelOrientIntoMeshVolume)         0; # Whether the model is oriented so normals point into the mesh
 

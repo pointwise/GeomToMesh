@@ -1,5 +1,5 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 # 
 # This sample Pointwise script is not supported by Pointwise, Inc.

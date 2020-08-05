@@ -1,5 +1,5 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 #
 # This sample Pointwise script is not supported by Pointwise, Inc.
@@ -827,14 +827,12 @@ proc setupPeriodicDomains { tol targetDomListVar } {
 # ----------------------------------------------
 # Retrieve domain attributes from geometry
 # ----------------------------------------------
-proc loadDomainAttributes { } {
+proc loadDomainAttributes { udomList sdomList } {
     global domParams
 
-    set domList [pw::Grid getAll -type pw::DomainUnstructured]
-
     set i 0
-    foreach dom $domList {
-        puts "Domain [expr $i+1] of [llength $domList]:"
+    foreach dom $udomList {
+        puts "Unstructured domain [expr $i+1] of [llength $udomList]:"
 
         # first enforce the global defaults
         $dom setUnstructuredSolverAttribute Algorithm $domParams(Algorithm)
@@ -859,14 +857,17 @@ proc loadDomainAttributes { } {
         set name [domAttributeFromGeometry $dom "PW:Name"]
         if { 0 < [string length $name] } {
             puts "  boundary name = $name."
-            if [catch { pw::BoundaryCondition getByName $name } bc] {
-                puts "    Creating boundary name $name"
-                set bc [pw::BoundaryCondition create]
-                $bc setName $name
-            } else {
-                puts "    $name already in boundary name list."
+            set baffle [domAttributeFromGeometry $dom "PW:Baffle"]
+            if { "Baffle" != $baffle } {
+                if [catch { pw::BoundaryCondition getByName $name } bc] {
+                    puts "    Creating boundary name $name"
+                    set bc [pw::BoundaryCondition create]
+                    $bc setName $name
+                } else {
+                    puts "    $name already in boundary name list."
+                }
+                $bc apply $dom
             }
-            $bc apply $dom
         } else {
             # look for periodic conditions
             set pdom [$dom getPeriodic]
@@ -1043,6 +1044,288 @@ proc loadDomainAttributes { } {
                 puts "  Shape constraint = $type."
                 $dom setUnstructuredSolverAttribute ShapeConstraint $type
             }
+        }
+
+        incr i 1
+    }
+
+    set i 0
+    foreach dom $sdomList {
+        puts "Structured domain [expr $i+1] of [llength $sdomList]:"
+
+        # look for boundary names
+        set name [domAttributeFromGeometry $dom "PW:Name"]
+        if { 0 < [string length $name] } {
+            puts "  boundary name = $name."
+            set baffle [domAttributeFromGeometry $dom "PW:Baffle"]
+            if { "Baffle" != $baffle } {
+                if [catch { pw::BoundaryCondition getByName $name } bc] {
+                    puts "    Creating boundary name $name"
+                    set bc [pw::BoundaryCondition create]
+                    $bc setName $name
+                } else {
+                    puts "    $name already in boundary name list."
+                }
+                $bc apply $dom
+            }
+        } else {
+            # look for periodic conditions
+            set pdom [$dom getPeriodic]
+            if { 0 < [string length $pdom] } {
+                set name [domAttributeFromGeometry $pdom "PW:Name"]
+                if { 0 < [string length $name] } {
+                    puts "  periodic boundary name = $name."
+                    append name "-Target"
+                    if [catch { pw::BoundaryCondition getByName $name } bc] {
+                        puts "    Creating boundary name $name"
+                        set bc [pw::BoundaryCondition create]
+                        $bc setName $name
+                    } else {
+                        puts "    $name already in boundary name list."
+                    }
+                    $bc apply $dom
+                }
+            } else {
+                # look for OuterBox geometry
+                set dbEnts [$dom getDatabaseEntities]
+                foreach db $dbEnts {
+                    if [$db isOfType pw::Quilt] {
+                        set name [$db getName]
+                        puts "  quilt name is $name"
+                        if [catch { pw::BoundaryCondition getByName $name } bc] {
+                            puts "    Creating boundary name $name"
+                            set bc [pw::BoundaryCondition create]
+                            $bc setName $name
+                        } else {
+                            puts "    $name already in boundary name list."
+                        }
+                        $bc apply $dom
+                    }
+                }
+            }
+        }
+
+        # look for shape constraint
+        set type [domAttributeFromGeometry $dom "PW:DomainShapeConstraint"]
+        switch -- $type {
+            Free -
+            DataBase {
+                puts "  Shape constraint = $type."
+                $dom setUnstructuredSolverAttribute ShapeConstraint $type
+            }
+        }
+
+        incr i 1
+    }
+
+}
+
+proc CheckForBluntDomains { domList nodeList nodeSpacing } {
+    global domParams
+
+    puts "Checking for blunt flag attribute on geometry faces."
+
+    set i 0
+    foreach dom $domList {
+
+        # look for structured domain request
+        set type [domAttributeFromGeometry $dom "PW:DomainBlunt"]
+        if { "true" == $type } {
+            puts "Domain [$dom getName], blunt flag from geometry."
+            # adjust domain characteristics so the IdentifyMappableDomains will be triggered
+            if { [$dom getEdgeCount] > 1 } { 
+                # Can't map multi-edge domains
+                continue 
+            }
+            set edge [$dom getEdge 1]
+            set cons [$edge getConnectors]
+            set ncons [llength $cons]
+            if { 4 != $ncons } {
+                continue
+            }
+            set i 0
+            foreach con $cons {
+                puts "  Connector $i = [$con getName]"
+                incr i 1
+            }
+            # set the opposing connectors to the same dimension
+            set c0 [lindex $cons 0]
+            set n0 [$c0 getNode Begin]
+            set n1 [$c0 getNode End]
+            set found 0
+            foreach con $cons {
+                set m0 [$con getNode Begin]
+                set m1 [$con getNode End]
+                set match 0
+                if { $m0 == $n0 || $m0 == $n1 } {
+                    incr match 1
+                }
+                if { $m1 == $n0 || $m1 == $n1 } {
+                    incr match 1
+                }
+                if { 0 == $match } {
+                    set c2 $con
+                    set found 1
+                    break
+                }
+            }
+            if { $found } {
+                puts "  Four connectors identified."
+                set cons [lremove $cons $c0]
+                set cons [lremove $cons $c2]
+                set found 0
+                foreach con $cons {
+                    set m0 [$con getNode Begin]
+                    set m1 [$con getNode End]
+                    if { $m0 == $n1 } {
+                        set n2 $m1
+                        set c1 $con
+                        incr found 1
+                    }
+                    if { $m0 == $n0 } {
+                        set n3 $m1
+                        set c3 $con
+                        incr found 1
+                    }
+                    if { $m1 == $n1 } {
+                        set n2 $m0
+                        set c1 $con
+                        incr found 1
+                    }
+                    if { $m1 == $n0 } {
+                        set n3 $m0
+                        set c3 $con
+                        incr found 1
+                    }
+                }
+                if { $found != 2 } {
+                    puts "  Four corner nodes not identified!"
+                    break
+                }
+                puts "  Connector 0 = [$c0 getName]"
+                puts "  Connector 1 = [$c1 getName]"
+                puts "  Connector 2 = [$c2 getName]"
+                puts "  Connector 3 = [$c3 getName]"
+                set sp0 -1.0
+                set i [lsearch $nodeList $n0]
+                if { -1 != $i } {
+                    set sp0 [lindex $nodeSpacing $i]
+                }
+                puts "  Node 0 = [$n0 getName], spacing = $sp0"
+                set sp1 -1.0
+                set i [lsearch $nodeList $n1]
+                if { -1 != $i } {
+                    set sp1 [lindex $nodeSpacing $i]
+                }
+                puts "  Node 1 = [$n1 getName], spacing = $sp1"
+                set sp2 -1.0
+                set i [lsearch $nodeList $n2]
+                if { -1 != $i } {
+                    set sp2 [lindex $nodeSpacing $i]
+                }
+                puts "  Node 2 = [$n2 getName], spacing = $sp2"
+                set sp3 -1.0
+                set i [lsearch $nodeList $n3]
+                if { -1 != $i } {
+                    set sp3 [lindex $nodeSpacing $i]
+                }
+                puts "  Node 3 = [$n3 getName], spacing = $sp3"
+                if { $sp0 < 0.0 || $sp1 < 0.0 || $sp2 < 0.0 || $sp3 < 0.0 } {
+                    puts "  INVALID node spacing! "
+                    break
+                }
+                set dim0 [$c0 getDimension]
+                set dim1 [$c1 getDimension]
+                set dim2 [$c2 getDimension]
+                set dim3 [$c3 getDimension]
+                set dim02 [expr min($dim0, $dim2)]
+                set dim13 [expr min($dim1, $dim3)]
+                if { $dim02 > $dim13 || 0 != $domParams(StrDomConvertARTrigger)} {
+                    $c0 setDimension $dim02
+                    $c2 setDimension $dim02
+                    puts "Connector [$c0 getName] dimension changed from $dim0 to $dim02"
+                    puts "Connector [$c2 getName] dimension changed from $dim2 to $dim02"
+
+                    $c0 setDistribution 1 [pw::DistributionTanh create]
+                    set conDist [$c0 getDistribution 1]
+                    if { $n0 == [$c0 getNode Begin] } {
+                        set news0 [expr max($sp0, $sp3)]
+                    }
+                    if { $n1 == [$c0 getNode Begin] } {
+                        set news0 [expr max($sp1, $sp2)]
+                    }
+                    if { $n0 == [$c0 getNode End] } {
+                        set news1 [expr max($sp0, $sp3)]
+                    }
+                    if { $n1 == [$c0 getNode End] } {
+                        set news1 [expr max($sp1, $sp2)]
+                    }
+                    puts "Connector [$c0 getName] new end spacings = $news0, $news1"
+                    $conDist setBeginSpacing $news0
+                    $conDist setEndSpacing $news1
+
+                    $c2 setDistribution 1 [pw::DistributionTanh create]
+                    set conDist [$c2 getDistribution 1]
+                    if { $n2 == [$c2 getNode Begin] } {
+                        set news0 [expr max($sp1, $sp2)]
+                    }
+                    if { $n3 == [$c2 getNode Begin] } {
+                        set news0 [expr max($sp0, $sp0)]
+                    }
+                    if { $n2 == [$c2 getNode End] } {
+                        set news1 [expr max($sp1, $sp2)]
+                    }
+                    if { $n3 == [$c2 getNode End] } {
+                        set news1 [expr max($sp0, $sp3)]
+                    }
+                    puts "Connector [$c2 getName] new end spacings = $news0, $news1"
+                    $conDist setBeginSpacing $news0
+                    $conDist setEndSpacing $news1
+                }
+                if {$dim13 > $dim02 || 0 != $domParams(StrDomConvertARTrigger)} {
+                    $c1 setDimension $dim13
+                    $c3 setDimension $dim13
+                    puts "Connector [$c1 getName] dimension changed from $dim1 to $dim13"
+                    puts "Connector [$c3 getName] dimension changed from $dim3 to $dim13"
+
+                    $c1 setDistribution 1 [pw::DistributionTanh create]
+                    set conDist [$c1 getDistribution 1]
+                    if { $n1 == [$c1 getNode Begin] } {
+                        set news0 [expr max($sp0, $sp1)]
+                    }
+                    if { $n2 == [$c1 getNode Begin] } {
+                        set news0 [expr max($sp2, $sp3)]
+                    }
+                    if { $n1 == [$c0 getNode End] } {
+                        set news1 [expr max($sp0, $sp1)]
+                    }
+                    if { $n2 == [$c0 getNode End] } {
+                        set news1 [expr max($sp2, $sp3)]
+                    }
+                    puts "Connector [$c1 getName] new end spacings = $news0, $news1"
+                    $conDist setBeginSpacing $news0
+                    $conDist setEndSpacing $news1
+
+                    $c3 setDistribution 1 [pw::DistributionTanh create]
+                    set conDist [$c3 getDistribution 1]
+                    if { $n0 == [$c3 getNode Begin] } {
+                        set news0 [expr max($sp0, $sp1)]
+                    }
+                    if { $n3 == [$c3 getNode Begin] } {
+                        set news0 [expr max($sp2, $sp3)]
+                    }
+                    if { $n0 == [$c3 getNode End] } {
+                        set news1 [expr max($sp0, $sp1)]
+                    }
+                    if { $n3 == [$c3 getNode End] } {
+                        set news1 [expr max($sp2, $sp3)]
+                    }
+                    puts "Connector [$c3 getName] new end spacings = $news0, $news1"
+                    $conDist setBeginSpacing $news0
+                    $conDist setEndSpacing $news1
+                }
+            }
+
         }
 
         incr i 1
@@ -2425,6 +2708,7 @@ proc FindHardEdgeCons { cons } {
     foreach con $cons {
         set doms [getDomsFromCons $con]
         if { [llength $doms] != 2 } {
+           puts "  Skipping [mkEntLink $con] (lamina boundary)"
            continue
         }
         set dim [$con getDimension]
@@ -2566,7 +2850,6 @@ proc FindHardEdgeCons { cons } {
     }
     
     # puts "maxProjDistRatio = $maxProjDistRatio @ $maxProjDistRatioXYZ"
-    # exit
 }
 
 # ----------------------------------------------
@@ -2669,7 +2952,6 @@ proc setup2DTRexBoundariesQuilts { domList fullLayers maxLayers growthRate bound
 
         # Clamp to minimum allowed edge length
         set initDs [expr max( $initDs , $conData($con,minAllowedSpacing) )]
-        
 
         # Push to nodes keeping smallest value
         foreach end [list Begin End] {
@@ -2719,10 +3001,12 @@ proc setup2DTRexBoundariesQuilts { domList fullLayers maxLayers growthRate bound
                             $bc setConditionType Angle 
                             $bc setValue $conParams(TurnAngle)
                         } else {
-                            puts [format "[$bc getName] old spacing = %.6g new spacing = %.6g" \
-                                [$bc getSpacing] $trexConData($con,initDs)]
+                            $bc setConditionType Wall
                             $bc setSpacing $trexConData($con,initDs)
                         }
+                    }
+                    if {!$doTRexAngleBC} {
+                        $bc setConditionType Wall
                     }
                     # apply the BC
                     $bc apply [list [list $dom $con]]
@@ -3009,7 +3293,24 @@ proc increaseConnectorDimensionFromAngleDeviation { conList conMaxDim conTurnAng
                 if { -1 != $j } {
                     continue
                 }
-                set doms [pw::Domain getDomainsFromConnectors $con]
+                set doms [list]
+                set domlist [pw::Domain getDomainsFromConnectors $con]
+                set bcount 0
+                foreach dom $domlist {
+                    set baffle [domAttributeFromGeometry $dom "PW:Baffle"]
+                    if { "Baffle" != $baffle } {
+                        lappend doms $dom
+                    }
+                    if { "Baffle" == $baffle } {
+                       incr bcount
+                    }
+                }
+                if { [llength $domlist] == $bcount } {
+                    puts "  *** Baffle Hard Edge CON [mkEntLink $con]"
+                    # set TRex flag for connector
+                    lappend hardconTRex $con
+                    continue
+                }
                 if { [llength $doms] != 2 } {
                     continue
                 }
@@ -3244,7 +3545,9 @@ proc setConMinMaxDimFromMinEdge { } {
         
         # Maximum connector dimension to meet minAllowedSpacing requirement
         set length [$con getTotalLength]
-        set conData($con,maxDim) [expr min($conData($con,maxDim),int(1.0*$length / $minAllowedSpacing + 0.333))]
+        if { 0.0 < $minAllowedSpacing } {
+            set conData($con,maxDim) [expr min($conData($con,maxDim),int(1.0*$length / $minAllowedSpacing + 0.333))]
+        }
         set conData($con,maxDim) [expr max(2,$conData($con,maxDim))]
 
         set conData($con,minDim) [expr min($conData($con,minDim),$conData($con,maxDim))]
@@ -3379,7 +3682,7 @@ proc reduceConnectorDimensionFromAvgSpacing { conMinDim conMaxDim conList nodeLi
 # ----------------------------------------------
 # Adjust connectors spacing and dimension where domain values specified in geometry
 # ----------------------------------------------
-proc adjustNodeSpacingFromGeometry { edgeMaxGrowthRate conMinDim conMaxDim conMaxDSVar nodeListVar nodeSpacingVar } {
+proc adjustNodeSpacingFromGeometry { conMinDim conMaxDim conMaxDSVar nodeListVar nodeSpacingVar } {
     upvar $conMaxDSVar conMaxDS
     upvar $nodeListVar nodeList
     upvar $nodeSpacingVar nodeSpacing
@@ -3389,7 +3692,7 @@ proc adjustNodeSpacingFromGeometry { edgeMaxGrowthRate conMinDim conMaxDim conMa
     set meshChanged 0
     set nodeSpacingChanged 0
 
-    puts "Adjusting node spacing"
+    puts "Adjusting node spacing from geometry"
 
     #
     # look for attributes in geometry
@@ -3612,6 +3915,448 @@ proc adjustNodeSpacingFromGeometry { edgeMaxGrowthRate conMinDim conMaxDim conMa
 }
 
 # ----------------------------------------------
+# Adjust wake connector distribution and TRex spacing
+# ----------------------------------------------
+proc adjustWakeConnectorSpacing { edgeMaxGrowthRate conMaxDS AR nodeListVar nodeSpacingVar } {
+    upvar $nodeListVar nodeList
+    upvar $nodeSpacingVar nodeSpacing
+    global domParams conData genParams
+
+    puts "Adjusting connector dimensions and distributions for wake treatment."
+
+    # create tolerance
+    set tol 1.0e20
+    foreach sp $nodeSpacing {
+        if { $sp < $tol } {
+            set tol $sp
+        }
+    }
+    set tol [expr $tol * 0.1]
+
+    # collect connectors on TE, wake edges and exit plane
+    set TEcons [list]
+    set Exitcons [list]
+    set Edgecons [list]
+
+    set udomList [pw::Grid getAll -type pw::DomainUnstructured]
+    foreach udom $udomList {
+        set baffle [domAttributeFromGeometry $udom "PW:Baffle"]
+        if { "Baffle" != $baffle } {
+            continue
+        }
+
+        $udom setUnstructuredSolverAttribute TRexPushAttributes True
+
+        set numedges [$udom getEdgeCount]
+
+        for { set e 1 } { $e <= $numedges } { incr e } {
+            set ed [$udom getEdge $e]
+            set numcons [$ed getConnectorCount]
+            for { set i 1 } { $i <= $numcons } { incr i } {
+                set con [$ed getConnector $i]
+
+                set doms [list]
+                set domList [pw::Domain getDomainsFromConnectors $con]
+                set bcount 0
+                set ecount 0
+                foreach dom $domList {
+                    set baffle [domAttributeFromGeometry $dom "PW:Baffle"]
+                    if { "Intersect" == $baffle } {
+                        incr ecount
+                    }
+                    if { "Baffle" == $baffle } {
+                       incr bcount
+                    }
+                }
+                if { 0 < $ecount } {
+                    set c [lsearch $Exitcons $con]
+                    if { -1 == $c } {
+                        lappend Exitcons $con
+                    }
+                } elseif { [llength $domList] == $bcount } {
+                    set c [lsearch $Edgecons $con]
+                    if { -1 == $c } {
+                        lappend Edgecons $con
+                    }
+                } elseif { [llength $domList] != $bcount } {
+                    set c [lsearch $TEcons $con]
+                    if { -1 == $c } {
+                        lappend TEcons $con
+                    }
+                }
+            }
+        }
+    }
+    puts "Number of exit connectors = [llength $Exitcons]"
+    puts "Number of wake edge connectors = [llength $Edgecons]"
+    puts "Number of TE connectors = [llength $TEcons]"
+
+    # collect exit plane nodes
+    set Exitnodes [list]
+    foreach con $Exitcons {
+        set node0 [$con getNode Begin]
+        set node1 [$con getNode End]
+        set n [lsearch $Exitnodes $node0]
+        if { -1 == $n } {
+            lappend Exitnodes $node0
+        }
+        set n [lsearch $Exitnodes $node1]
+        if { -1 == $n } {
+            lappend Exitnodes $node1
+        }
+    }
+    puts "Number of exit nodes = [llength $Exitnodes]"
+
+    # collect TE plane nodes
+    set TEnodes [list]
+    foreach con $TEcons {
+        set node0 [$con getNode Begin]
+        set node1 [$con getNode End]
+        set n [lsearch $TEnodes $node0]
+        if { -1 == $n } {
+            lappend TEnodes $node0
+        }
+        set n [lsearch $TEnodes $node1]
+        if { -1 == $n } {
+            lappend TEnodes $node1
+        }
+    }
+    puts "Number of TE nodes = [llength $TEnodes]"
+
+    # reset distribution on edge connectors to one-sided geometric
+    foreach con $Edgecons {
+        set node0 [$con getNode Begin]
+        set node1 [$con getNode End]
+        $con setDistribution 1 [pw::DistributionGeometric create]
+        set conDist [$con getDistribution 1]
+        set i [lsearch $Exitnodes $node0]
+        if { -1 == $i } {
+            set i0 [lsearch $nodeList $node0]
+            set sp0 [lindex $nodeSpacing $i0]
+            $conDist setBeginSpacing $sp0
+        }
+        set i [lsearch $Exitnodes $node1]
+        if { -1 == $i } {
+            set i1 [lsearch $nodeList $node1]
+            set sp1 [lindex $nodeSpacing $i1]
+            $conDist setEndSpacing $sp1
+        }
+    }
+
+    # Determining minimum nodes spacing from TE nodes
+    set minsp 1.0e20
+    foreach node $TEnodes {
+        set i [lsearch $nodeList $node]
+        if { -1 != $i } {
+            set sp [lindex $nodeSpacing $i]
+            puts "Node [$node getName] spacing = $sp"
+            if { $sp < $minsp } {
+                set minsp $sp
+            }
+        }
+    }
+    puts "New minimum spacing for Wake treatment = $minsp"
+
+    # reset TRex spacing along TE connectors
+    foreach con $TEcons {
+        set name [$con getName]
+        if { [catch { pw::TRexCondition getByName $name } bc] } {
+            puts "  Creating T-Rex wall boundary $name"
+            set bc [pw::TRexCondition create]
+            $bc setName $name
+            $bc setConditionType Wall
+            $bc setSpacing $minsp
+        } else {
+            set bcsp [$bc getSpacing]
+            if { $bcsp > $minsp } {
+                $bc setSpacing $minsp
+            }
+        }
+    }
+
+    # Replace TRex spacing for TE connectors
+    foreach con $TEcons {
+        set name [$con getName]
+        if { [catch { pw::TRexCondition getByName $name } bc] } {
+            puts "  WARNING: T-Rex wall boundary $name not found!"
+            continue
+        } else {
+            $bc setSpacing $minsp
+        }
+    }
+
+    # Replace TRex spacing for wake edge connectors
+    foreach con $Edgecons {
+        set name [$con getName]
+        if { [catch { pw::TRexCondition getByName $name } bc] } {
+            puts "  WARNING: T-Rex wall boundary $name not found!"
+            continue
+        } else {
+            $bc setSpacing $minsp
+        }
+    }
+
+    # set Exit cons to match
+    foreach con $Exitcons {
+        set name [$con getName]
+        if { [catch { pw::TRexCondition getByName $name } bc] } {
+            puts "  Creating T-Rex match for boundary $name"
+            set bc [pw::TRexCondition create]
+            $bc setName $name
+            $bc setConditionType Match
+        } else {
+            $bc setConditionType Match
+        }
+    }
+
+    # Replace nodes spacing for TE nodes
+    foreach node $TEnodes {
+        set i [lsearch $nodeList $node]
+        if { -1 != $i } {
+            set sp [lindex $nodeSpacing $i]
+            puts "Node [$node getName] spacing = $sp"
+            if { $minsp < $sp } {
+                set nodeSpacing [lreplace $nodeSpacing $i $i $minsp]
+                puts "Changing node spacing for node [$node getName]"
+            }
+        }
+    }
+
+    # Replace nodes spacing for Exit nodes
+    foreach node $Exitnodes {
+        set i [lsearch $nodeList $node]
+        if { -1 != $i } {
+            set sp [lindex $nodeSpacing $i]
+            puts "Node [$node getName] spacing = $sp"
+            if { $minsp < $sp } {
+                set nodeSpacing [lreplace $nodeSpacing $i $i $minsp]
+                puts "Changing node spacing for node [$node getName]"
+            }
+        }
+    }
+
+    # adjust dimension and spacing of connectors attached to TE nodes and Exit cons
+
+    # create connector list of TE cons, Exit cons and connectors on wing emanating from TE
+    set conList [list]
+    # add TE cons
+    foreach con $TEcons {
+        set e [lsearch $conList $con]
+        if {-1 != $e} {
+            continue
+        }
+        lappend conList $con
+        puts "Adding TE connector [$con getName] to redimension list."
+    }
+    # add Exit cons
+    foreach con $Exitcons {
+        set e [lsearch $conList $con]
+        if {-1 != $e} {
+            continue
+        }
+        lappend conList $con
+        puts "Adding Exit connector [$con getName] to redimension list."
+    }
+    # add Edge cons (will check to do one-sided geometric
+    foreach con $Edgecons {
+        set e [lsearch $conList $con]
+        if {-1 != $e} {
+            continue
+        }
+        lappend conList $con
+        puts "Adding Edge connector [$con getName] to redimension list."
+    }
+
+    # connectors emanating from TE first, not Edge cons or TE cons
+    foreach node $TEnodes {
+        set cons [pw::Connector getConnectorsFromNode $node]
+        foreach con $cons {
+            set e [lsearch $Edgecons $con]
+            if {-1 != $e} {
+                continue
+            }
+            set e [lsearch $TEcons $con]
+            if {-1 != $e} {
+                continue
+            }
+            set e [lsearch $conList $con]
+            if {-1 != $e} {
+                continue
+            }
+            lappend conList $con
+            puts "Adding connector [$con getName] to redimension list."
+        }
+    }
+
+    # now redimension as needed
+    set c 0
+    foreach con $conList {
+        puts "Checking connector [$con getName]"
+        incr c 1
+        set conMinDim $conData($con,minDim)
+        set conMaxDim $conData($con,maxDim)
+
+        set dsMax [lindex $conMaxDS $i]
+        # retrieve updated node spacing values
+        set node0 [$con getNode Begin]
+        set node1 [$con getNode End]
+        set n0 [lsearch $nodeList $node0]
+        set n1 [lsearch $nodeList $node1]
+        set s0 [lindex $nodeSpacing $n0]
+        set s1 [lindex $nodeSpacing $n1]
+
+        set name [$con getName]
+        set bcsp -1.0
+        if { [catch { pw::TRexCondition getByName $name } bc] } {
+            set bcsp -1.0
+        } else {
+            if { "Wall" == [$bc getConditionType] } {
+                set bcsp [$bc getSpacing]
+            }
+        }
+
+        set flag0 1
+        set flag1 1
+        set minsp 1.0e20
+        set e [lsearch $Edgecons $con]
+        if {-1 != $e} {
+            set i [lsearch $TEnodes $node0]
+            if {-1 == $i} {
+                set flag0 0
+                set minsp [expr min($minsp, $s0)]
+            }
+            set i [lsearch $TEnodes $node1]
+            if {-1 == $i} {
+                set flag1 0
+                set minsp [expr min($minsp, $s1)]
+            }
+            set lAR [expr 2.0 * $AR]
+        } else {
+            set minsp [expr min($s0, $s1)]
+            set lAR $AR
+        }
+
+        # Set connector distribution type and synchronize end spacing
+        if { $flag0 && $flag1 } {
+            $con setDistribution 1 [pw::DistributionTanh create]
+            set conDist [$con getDistribution 1]
+            $conDist setBeginSpacing $s0
+            $conDist setEndSpacing $s1
+        } else {
+            $con setDistribution 1 [pw::DistributionGeometric create]
+            set conDist [$con getDistribution 1]
+            if {$flag0} {
+                $conDist setBeginSpacing $s0
+            }
+            if {$flag1} {
+                $conDist setEndSpacing $s1
+            }
+        }
+
+        # Increase/decrease dimension until segment max growth rate is met
+        set flag 0
+        set olddim [$con getDimension]
+        # iflag indicates dimension increasing is taking place
+        # dflag indicates dimension decreasing is taking place
+        # if one of them is set the other is not permitted.
+        set iflag 0
+        set dflag 0
+        while { 0 == $flag } {
+
+            set dim [$con getDimension]
+            set maxRatio 1.0
+            set minRatio 1.0
+            set maxds 0.0
+            set minds 1.0e20
+            set flag 1
+            if { $conMinDim <= $dim && $dim <= $conMaxDim } {
+                for { set n 1 } { $n < [expr $dim-2] } { incr n } {
+                    set pt0 [$con getXYZ -grid $n]
+                    set pt1 [$con getXYZ -grid [expr $n + 1]]
+                    set pt2 [$con getXYZ -grid [expr $n + 2]]
+                    set ds1 [pwu::Vector3 length [pwu::Vector3 subtract $pt1 $pt0]]
+                    if { $ds1 > $maxds } {
+                        set maxds $ds1
+                    }
+                    if { $n > 1 && $ds1 < $minds } {
+                        set minds $ds1
+                    }
+                    set ds2 [pwu::Vector3 length [pwu::Vector3 subtract $pt1 $pt2]]
+                    if { $ds2 > $maxds } {
+                        set maxds $ds2
+                    }
+                    if { $ds1 > $tol && $ds2 > $tol } {
+                        set ratio [expr {max($ds1,$ds2)} / {min($ds1,$ds2)}]
+                        if { $ratio > $maxRatio } {
+                            set maxRatio $ratio
+                        }
+
+                        set ratio [expr { $ds1 / min($s0,$s1) }]
+                        if { $ratio < $minRatio } {
+                            set minRatio $ratio
+                        }
+                        set ratio [expr { $ds2 / min($s0,$s1) }]
+                        if { $ratio < $minRatio } {
+                            set minRatio $ratio
+                        }
+                    }
+                }
+                #puts "con:[$con getName], dim = $dim, maxds = $maxds, minRatio = $minRatio, maxRatio = $maxRatio, maxAR = [expr $maxds / $bcsp]"
+
+                if { 0 == $iflag && $minRatio < [expr 1.0/$edgeMaxGrowthRate] } {
+                    set newdim [expr $dim - 1]
+                    $con setDimension $newdim
+                    set flag 0
+                    if { $newdim <= $conMinDim } {
+                        set dim $conMinDim
+                        $con setDimension $dim
+                        break
+                    }
+                    set dflag 1
+                } elseif { 0 == $dflag && ($maxRatio > $edgeMaxGrowthRate || \
+                           (0.0 < $lAR && 0.0 < $bcsp && [expr $maxds / $bcsp] > $lAR) ) } {
+                    # if internal minimum spacing is larger than end spacing increase dimension
+                    if { $minds > $minsp } {
+                        set newdim [expr $dim + 1]
+                        $con setDimension $newdim
+                        set flag 0
+                        if { $newdim >= $conMaxDim } {
+                            set dim $conMaxDim
+                            $con setDimension $dim
+                            break
+                        }
+                        set iflag 1
+                    }
+                }
+            }
+        }
+        if { $dim != $olddim } {
+            puts "  Changing dimension for connector [$con getName] $c/[llength $conList] from $olddim to $dim"
+        }
+    }
+
+    # now set the boundary conditions in each domain
+    foreach dom $udomList {
+        set numedges [$dom getEdgeCount]
+
+        for { set e 1 } { $e <= $numedges } { incr e } {
+            set ed [$dom getEdge $e]
+            set numcons [$ed getConnectorCount]
+            for { set i 1 } { $i <= $numcons } { incr i } {
+                set con [$ed getConnector $i]
+                set name [$con getName]
+                if { ! [catch { pw::TRexCondition getByName $name } bc] } {
+                    $bc apply [list [list $dom $con]]
+                    if { [catch {$bc apply [list [list $dom $con Opposite]] } ] } {
+                        puts "Applying T-Rex condition to opposite side for connector [$con getName]."
+                    }
+                }
+            }
+        }
+    }
+}
+
+# ----------------------------------------------
 # Adjust connector dimension up or down based on end point spacing values
 # ----------------------------------------------
 proc connectorDimensionFromEndSpacing { edgeMaxGrowthRate conMinDim conMaxDim conList conMaxDS \
@@ -3763,7 +4508,6 @@ proc connectorDimensionFromEndSpacing { edgeMaxGrowthRate conMinDim conMaxDim co
                         }
                     }
 
-                    #puts "  dim = $dim, maxds = $maxds, minRatio = $minRatio, maxRatio = $maxRatio"
                     if { 0 == $iflag && $minRatio < [expr 1.0/$edgeMaxGrowthRate] } {
                         set newdim [expr $dim - 1]
                         $con setDimension $newdim
@@ -3820,6 +4564,13 @@ proc setup2DTRexBoundaries { domList ARlimit softconTRex hardconTRex } {
     set c -1
     foreach dom $domList {
         incr c 1
+
+        set baffle [domAttributeFromGeometry $dom "PW:Baffle"]
+        if { "Baffle" == $baffle } {
+            set bflag 1
+        } else {
+            set bflag 0
+        }
 
         set pdom [$dom getPeriodic]
         if { "" != $pdom } {
@@ -3885,6 +4636,13 @@ proc setup2DTRexBoundaries { domList ARlimit softconTRex hardconTRex } {
                     }
                 }
 
+                if { 1 == $bflag } {
+                    set spmin [expr min($s0, $s1)]
+                    puts "Baffle connector [$con getName] detected. s0, s1, smin = $s0, $s1, $spmin"
+                    set s0 $spmin
+                    set s1 $spmin
+                }
+
                 if { 0.0 < $ARlimit } {
                     set sp [expr max(0.5 * ($s0 + $s1), $maxsp/$ARlimit)]
                 } else {
@@ -3908,9 +4666,9 @@ proc setup2DTRexBoundaries { domList ARlimit softconTRex hardconTRex } {
                     }
                 } else {
                     puts "  $name already in T-Rex boundary list."
-                    set type [$bc getConditionType]
-                    if { $hflag && [expr abs($sp - [$bc getSpacing])] > 0.00001 } {
-                        puts [format "[$bc getName] old spacing = %.6g new spacing = %.6g" [$bc getSpacing] $sp]
+                    set bcsp [$bc getSpacing]
+                    if { $hflag && $sp < $bcsp } {
+                        puts [format "[$bc getName] old spacing = %.6g new spacing = %.6g" $bcsp $sp]
                         $bc setSpacing $sp
                     }
                 }
@@ -3930,8 +4688,9 @@ proc setup2DTRexBoundaries { domList ARlimit softconTRex hardconTRex } {
                         }
                     } else {
                         puts "  $pname already in T-Rex boundary list."
-                        if { $hflag && [expr abs($sp - [$bc getSpacing])] > 0.00001 } {
-                            puts [format "[$bc getName] old spacing = %.6g new spacing = %.6g" [$bc getSpacing] $sp]
+                        set bcsp [$bc getSpacing]
+                        if { $hflag && $sp < $bcsp } {
+                            puts [format "[$bc getName] old spacing = %.6g new spacing = %.6g" $bcsp $sp]
                             $bc setSpacing $sp
                         }
                     }
@@ -4058,12 +4817,12 @@ proc setupTRexBoundaries { uBlk domList } {
         }
         if { [string is double -strict $sp] && 0.0 < $sp } {
             set name [domAttributeFromGeometry $dom "PW:Name"]
-            puts [format "  Domain $name has spacing value = %.6g." $sp]
             lappend tdomList $dom
 
             if { 0 == [string length $name] } {
                 set name [$dom getName]
             }
+            puts [format "  Domain $name has spacing value = %.6g." $sp]
 
             # create T-Rex wall BC as needed
             if [catch { pw::TRexCondition getByName $name } bc] {
@@ -4077,6 +4836,10 @@ proc setupTRexBoundaries { uBlk domList } {
                 $bc setSpacing $sp
             }
             $bc apply [list [list $uBlk $dom]]
+            set baffle [domAttributeFromGeometry $dom "PW:Baffle"]
+            if { "Baffle" == $baffle } {
+                $bc apply [list [list $uBlk $dom Opposite]]
+            }
             set lflag 1
         }
     }
@@ -4140,8 +4903,17 @@ proc setupDomAdapt { uBlk domainAdapt } {
         foreach dom $domList {
             set adapt [domAttributeFromGeometry $dom "PW:DomainAdaptTarget"]
             if { "true" == $adapt } {
-                puts "Domain [$dom getName] is a target for adaptation."
-                set bc [pw::TRexCondition getByEntities [list $uBlk $dom]]
+                set name [domAttributeFromGeometry $dom "PW:Name"]
+                if { "" == $name } {
+                    set name [$dom getName]
+                }
+                puts "Domain $name is a target for adaptation."
+                if [catch { pw::TRexCondition getByName $name } bc] {
+                    puts "  Creating T-Rex adapt boundary $name"
+                    set bc [pw::TRexCondition create]
+                    $bc setName $name
+                    $bc apply [list [list $uBlk $dom]]
+                }
                 $bc setAdaptation On
                 set maxlength [$dom getSurfaceEdgeMaximumLength]
                 $dom setUnstructuredSolverAttribute EdgeMaximumLength $maxlength
@@ -4789,7 +5561,7 @@ proc IdentifyMappableDomains {} {
         }
         
         if {4 == $subEdge(num)} {
-            # we can map this domain to structured topology
+            # we can map this domain to structured topology (4 hard corners)
             # whether we should is determined below
             puts "  [mkEntLink $dom] is mappable"
             set domData($dom,mappable) 1
@@ -4824,15 +5596,19 @@ proc IdentifyMappableDomains {} {
         
         for {set isub 0} {$isub < $subEdge(num)} {incr isub} {
             set dim $subEdge($isub,dim)
+            set qual "none"
             if {[expr $dim-$delta] > $avgDim} {
                 # a higher than avg dim sub-edge
                 lappend highDimSubEdges $isub
                 incr highDimAvg $dim
+                set qual "high"
             } elseif {[expr $dim+$delta] < $avgDim} {
                 # a lower than avg dim sub-edge
                 lappend lowDimSubEdges $isub
                 incr lowDimAvg $dim
+                set qual "low"
             }
+            # puts "    subEdge $isub  dim: $dim  avgDim: $avgDim  $qual"
         }
         
         if {[llength $highDimSubEdges] != 0} {
@@ -4860,11 +5636,15 @@ proc IdentifyMappableDomains {} {
         # look for min-max-min-max checkerboarding of sub-edge dims
         # only want to map domains which have pairs of opposite sub-edges with
         # roughly matching dimensions
-        if {[llength $highDimSubEdges] != 2 || [llength $lowDimSubEdges] != 2} {continue}
+        if {[llength $highDimSubEdges] != 2 || [llength $lowDimSubEdges] != 2} {
+            puts "    Adjacent edges don't appear in high-low pattern"
+            continue
+        }
         set isub1 [lindex $highDimSubEdges 0]
         set isub2 [lindex $highDimSubEdges 1]
         if {[expr $isub1 % 2] != [expr $isub2 % 2]} {
             # matching dim sub-edges are not opposite each other in mapped domain
+            puts "    Opposite edges don't match dimension within threshold"
             continue
         }
         
@@ -4913,15 +5693,36 @@ proc ConvertHighAspectDoms {} {
     puts "Converting high aspect mappable domains."
 
     set doms [pw::Grid getAll -type pw::DomainUnstructured]
+    set doms_to_convert [list]
     foreach dom $doms {
         if {![info exists domData($dom,mappable)] || ![info exists domData($dom,ARTrigger)]} { continue }
         if {!$domData($dom,mappable) || !$domData($dom,ARTrigger)} { continue }
-        if {0 == [mapDomToStrDom $dom]} {
+        lappend doms_to_convert $dom
+    }
+    
+    set doms_to_convert [lsort -command SortHighAspectDoms $doms_to_convert]
+    set converted_doms [list]
+    foreach dom $doms_to_convert {
+        if {[set strdom [mapDomToStrDom $dom]] == ""} {
             # convert failed
+        } else {
+            lappend converted_doms $strdom
         }
     }
     return 1
 }
+
+proc SortHighAspectDoms {a b} {
+    global domData
+    # sort doms such that higher dimensioned short edge is first in list
+    if {$domData($a,lowDimSubEdgeAvg) > $domData($b,lowDimSubEdgeAvg)} {
+        return -1
+    } elseif {$domData($a,lowDimSubEdgeAvg) < $domData($b,lowDimSubEdgeAvg)} {
+        return 1
+    }
+    return [string compare [$a getName] [$b getName]]
+}
+
 
 
 proc getDomConstraint {dom} {
@@ -5094,10 +5895,11 @@ proc syncDomLongCons {dom} {
 
 proc mapDomToStrDom {dom} {
     global domData
+    set strdom ""
     if {!$domData($dom,mappable) || 4 != $domData($dom,subEdge,num)} { 
         # unmappable
         puts "mapDomToStrDom: [mkEntLink $dom] is unmappable"
-        return 0
+        return $strdom
     }
     # synchronize dimension and spacing on opposite sub-edges
     set numSubEdges $domData($dom,subEdge,num)
@@ -5108,10 +5910,54 @@ proc mapDomToStrDom {dom} {
     if {4 != $numCons} {
         # unable to sync distribution
         puts "mapDomToStrDom: [mkEntLink $dom] has too many cons $numCons"
-        return 0
+        return $strdom
     }
     set idim [expr max($domData($dom,subEdge,0,dim), $domData($dom,subEdge,2,dim))]
     set jdim [expr max($domData($dom,subEdge,1,dim), $domData($dom,subEdge,3,dim))]
+    
+    # check idim against any adjacent strdom connector dimension
+    set didStrDomMatch 0
+    foreach isub [list 0 2] {
+        set doms [pw::Domain getDomainsFromConnectors $domData($dom,subEdge,$isub,cons)]
+        foreach d $doms {
+            if {$d != $dom && [$d getType] == "pw::DomainStructured"} {
+                lappend adjacentStrDomsICons 
+                if {[$domData($dom,subEdge,$isub,cons) getDimension] != $idim} {
+                    # must match existing strdom dimension
+                    if {$didStrDomMatch} {
+                        # bad news - we already matched an adjacent strdom dimension
+                        # which is different than current idim - return without converting
+                        return $strdom
+                    } else {
+                        set idim [$domData($dom,subEdge,$isub,cons) getDimension]
+                        set didStrDomMatch 1
+                    }
+                }
+            }
+        }
+    }
+    
+    # check jdim against any adjacent strdom connector dimension
+    set didStrDomMatch 0
+    foreach isub [list 1 3] {
+        set doms [pw::Domain getDomainsFromConnectors $domData($dom,subEdge,$isub,cons)]
+        foreach d $doms {
+            if {$d != $dom && [$d getType] == "pw::DomainStructured"} {
+                lappend adjacentStrDomsICons 
+                if {[$domData($dom,subEdge,$isub,cons) getDimension] != $jdim} {
+                    # must match existing strdom dimension
+                    if {$didStrDomMatch} {
+                        # bad news - we already matched an adjacent strdom dimension
+                        # which is different than current jdim - return without converting
+                        return $strdom
+                    } else {
+                        set jdim [$domData($dom,subEdge,$isub,cons) getDimension]
+                        set didStrDomMatch 1
+                    }
+                }
+            }
+        }
+    }
     
     foreach isub [list 0 2] {
         if {$domData($dom,subEdge,$isub,dim) != $idim} {
@@ -5142,10 +5988,11 @@ proc mapDomToStrDom {dom} {
         # delete unstructured domain
         $dom delete
     } else {
-    
+        $strdom delete
+        set strdom ""
     }
     
-    return 1
+    return $strdom
 }
 
 

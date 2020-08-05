@@ -92,6 +92,8 @@ scale     ctip
 rotatez   wing:washout   ctip/4   0
 translate dxtip   dytip   +span/2
 rule      0
+attribute PW:Name $Wing
+attribute PW:WallSpacing $Wall
 translate wing:xloc   0   wing:zloc
 #select    edge   1
 #attribute Wake   $Wing_Wake
@@ -129,6 +131,8 @@ patbeg    itail   ifzero(abs(fuse:width[isect])+abs(fuse:height[isect]),0,1)
    translate fuse:xloc[isect]   0   fuse:zloc[isect]
 patend
 blend     fuse:noselist   fuse:taillist   0   0
+attribute PW:Name $Fuselage
+attribute PW:WallSpacing $Wall
 store     fuseOML   0   0
 
 
@@ -152,6 +156,8 @@ scale     ctip
 rotatey   -htail:twist   0   0
 translate span/2*tand(htail:sweep)   span/2   span/2*tand(htail:dihedral)
 rule      0
+attribute PW:Name $Htail
+attribute PW:WallSpacing $Wall
 translate htail:xloc   htail:yloc   htail:zloc
 #select    edge   1
 #attribute Wake   $HTail_Wake
@@ -174,6 +180,8 @@ rotatex   90   0   0
 scale     ctip
 translate span/2*tand(vtail:sweep)   span/2   0
 rule      0
+attribute PW:Name $Vtail
+attribute PW:WallSpacing $Wall
 translate vtail:xloc   vtail:yloc   0
 rotatex   90   0   0
 store     vtailOML   0   0
@@ -196,8 +204,10 @@ attribute .tParam "0.5; 0.01; 33.;"
 store     left_wing_wake   0   0
 restore   rite_wing_wake   0
 attribute PW:Baffle $Baffle
+attribute PW:WallSpacing $Wall
 restore   left_wing_wake   0
 attribute PW:Baffle $Baffle
+attribute PW:WallSpacing $Wall
 union     0   0   0
 attribute Wake   $Wing_Wake
 store     WING_WAKE   0   0
@@ -234,25 +244,21 @@ attribute .tParam "0.5; 0.01; 33.;"
 store     left_htail_wake   0   0
 restore   rite_htail_wake   0
 attribute PW:Baffle $Baffle
+attribute PW:WallSpacing $Wall
 restore   left_htail_wake   0
 attribute PW:Baffle $Baffle
+attribute PW:WallSpacing $Wall
 union     0   0   0
 store     HTAIL_WAKE   0   0
 
 # Union all OMLs
 restore   wingOML   0
-attribute PW:DomainEndSpacing 0.1
-attribute PW:DomainMaxEdge 0.25
 restore   fuseOML   0
 union     0   0   0
 
 restore   htailOML   0
-attribute PW:DomainEndSpacing 0.05
-attribute PW:DomainMaxEdge 0.15
 union     0   0   0
 restore   vtailOML   0
-attribute PW:DomainEndSpacing 0.05
-attribute PW:DomainMaxEdge 0.15
 union     0   0   0
 restore   WING_WAKE
 subtract
@@ -322,8 +328,8 @@ ifthen withbox eq 1
   attribute capsGroup   $HTail_Wake
   attribute capsIntent  $WAKE
   
-  dump      /home/skarman/Documents/Cases/Glider/gliderbox.egads   0   1
-  dump      /home/skarman/Documents/Cases/Glider/gliderbox.iges   0   1
+  dump      /Users/skarman/Documents/Cases/Glider/gliderbox.egads   0   1
+  dump      /Users/skarman/Documents/Cases/Glider/gliderbox.iges   0   1
 
 else
   
@@ -340,7 +346,7 @@ else
   attribute capsIntent  $WAKE
   #attribute PW:Baffle $Baffle
   
-  dump      /home/skarman/Documents/Cases/Glider/glider.egads   0   1
+  dump      /Users/skarman/Documents/Cases/Glider/glider.egads   0   1
 
 endif
 

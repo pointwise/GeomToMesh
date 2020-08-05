@@ -1,5 +1,5 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 #
 # This sample Pointwise script is not supported by Pointwise, Inc.
@@ -161,11 +161,7 @@ if { 1 == $nblk } {
     set solveMode [pw::Application begin UnstructuredSolver $uBlk]
         set Growth [$uBlk getUnstructuredSolverAttribute TRexGrowthRate]
         puts "Current TRex growth rate = $Growth"
-        if { $factor > 1.0 } {
-            set Growth [expr $Growth ** (1.0 / $factor)]
-        } else {
-            set Growth [expr $Growth ** $factor]
-        }
+        set Growth [expr $Growth ** (1.0 / $factor)]
         puts "New TRex growth rate = $Growth"
         $uBlk setUnstructuredSolverAttribute TRexGrowthRate $Growth
     

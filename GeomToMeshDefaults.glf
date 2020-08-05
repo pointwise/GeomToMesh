@@ -1,5 +1,5 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 # 
 # This sample Pointwise script is not supported by Pointwise, Inc.
@@ -29,6 +29,7 @@ set conParams(JoinCons)                          1; # Perform joining operation 
 set conParams(ProxGrowthRate)                  1.3; # Connector proximity growth rate
 set conParams(SourceSpacing)                     0; # Use source cloud for adaptive pass on connectors V18.2+
 set conParams(TurnAngleHard)                  70.0; # Hard edge turning angle limit for domain T-Rex (0.0 - not used)
+set conParams(EqualSpacing)                      0; # 0 allow unequal spacing along connectors, 1 enforce equal spacing
 
 # Domain level
 set domParams(Algorithm)                "Delaunay"; # Isotropic (Delaunay, AdvancingFront or AdvancingFrontOrtho)
@@ -44,6 +45,7 @@ set domParams(MinEdge)                         0.0; # Domain minimum edge length
 set domParams(MaxEdge)                         0.0; # Domain maximum edge length
 set domParams(Adapt)                             0; # Set up domains marked as source or target from geometry
 set domParams(WallSpacing)                     0.0; # defined spacing when geometry attributed with $wall
+set domParams(StrDomConvertARTrigger)          0.0; # Aspect ratio to trigger converting domains to structured
 
 # Block level
 set blkParams(Algorithm)                "Delaunay"; # Isotropic (Delaunay, Voxel) (V18.3+)
@@ -51,6 +53,7 @@ set blkParams(VoxelLayers)                       3; # Number of Voxel transition
 set blkParams(boundaryDecay)                   0.5; # Volumetric boundary decay
 set blkParams(collisionBuffer)                 0.5; # Collision buffer for colliding T-Rex fronts
 set blkParams(maxSkewAngle)                  180.0; # Maximum skew angle for T-Rex extrusion
+set blkParams(TRexSkewDelay)                     0; # Number of layers to delay enforcement of skew criteria
 set blkParams(edgeMaxGrowthRate)               1.8; # Volumetric edge ratio
 set blkParams(fullLayers)                        0; # Full layers (0 for multi-normals, >= 1 for single normal)
 set blkParams(maxLayers)                         0; # Maximum layers
@@ -68,7 +71,7 @@ set genParams(sourceBoxAngle)                  0.0; # Angle for widening source 
 set genParams(sourceGrowthFactor)             10.0; # Growth rate for spacing value along box
 set genParams(sourcePCDFile)                    ""; # File name containing source spacing data in PCD format
 set genParams(ModelSize)                         0; # Set model size before CAD import (0 - get from file)
-set genParams(writeGMA)                     "true"; # Write out geometry-mesh associativity file (true or false)
+set genParams(writeGMA)                      "2.0"; # Write out geometry-mesh associativity file version (0.0 - none, 1.0 or 2.0)
 set genParams(assembleTolMult)                 1.0; # Multiplier on model assembly tolerance for allowed MinEdge
 set genParams(modelOrientIntoMeshVolume)         1; # Whether the model is oriented so normals point into the mesh
 

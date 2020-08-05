@@ -1,5 +1,5 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 #
 # This sample Pointwise script is not supported by Pointwise, Inc.
@@ -55,7 +55,7 @@ set genParams(sourceBoxAngle)                 0.0; # Angle for widening source b
 set genParams(sourceGrowthFactor)            10.0; # Growth rate for spacing value along box
 set genParams(ModelSize)                        0; # Set model size before CAD import (0 - undefined)
 
-#Elevate On Export
+# Elevate On Export
 set eoeParams(degree)                           Q1; # Polynomial degree (Q1, Q2, Q3 or Q4) NOTE: ONLY APPLIES TO CGNS AND GMSH
 set eoeParams(costThreshold)                   0.8; # Cost convergence threshold
 set eoeParams(maxIncAngle)                   175.0; # Maximum included angle tolerance

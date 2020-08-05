@@ -1,5 +1,5 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 #
 # This sample Pointwise script is not supported by Pointwise, Inc.
@@ -35,7 +35,8 @@ proc GetDomN { i j id } {
 #
 proc LoadGlobalPointIndex { { blks {} } } {
     global globalPointInd globalPoints
-
+    global domBoundaryCon domBoundaryNode
+            
     catch { unset globalPointInd }
     catch { unset globalPoints }
 
@@ -43,6 +44,7 @@ proc LoadGlobalPointIndex { { blks {} } } {
     set globalCellID 1
 
     set singleBlockMode 1
+    set verbose 0
 
     # We must determine a unique grid point index for each point
     #   if singleBlockMode = TRUE
@@ -84,6 +86,7 @@ proc LoadGlobalPointIndex { { blks {} } } {
             }
         }
     }
+    
 
     # gather the unique set of nodes
     foreach con $cons {
@@ -127,12 +130,21 @@ proc LoadGlobalPointIndex { { blks {} } } {
 
         set nedge [$dom getEdgeCount]
         set interiorPtOffset 0
+        set isTargetDom 0
+        if {$verbose && [$dom getName] == "dom-1"} {
+            set isTargetDom 1
+        }
         if { 1 == [lindex $dims 1] } {
             # unstructured
+            # walk the edge nodes and cons
+            # determine number of unique boundary points
+            # record boundary node/con for each dom bdry point index
             set domInd 1
             for { set iedge 1 } { $iedge <= $nedge } { incr iedge } {
                 set edge [$dom getEdge $iedge]
                 set ncon [$edge getConnectorCount]
+                set edgeNodes [list]
+                set edgeCons [list]
                 for { set i 1 } { $i <= $ncon } { incr i } {
                     set con [$edge getConnector $i]
                     set orient [$edge getConnectorOrientation $i]
@@ -160,12 +172,51 @@ proc LoadGlobalPointIndex { { blks {} } } {
                             }
                             set globalPointInd($con,$dim) $globalPointInd($node)
                         }
-                        set beg 1
-                        set end [expr [$con getDimension]-1]
-                        for  { set cind $beg } { $cind <= $end } { incr cind } {
-                            set globalPointInd($dom,$domInd) $globalPointInd($con,$cind)
-                            incr interiorPtOffset
-                            incr domInd
+                        
+                        set ind [lsearch -exact $edgeCons $con]
+                        if {-1 == $ind} {
+                            # haven't visited this con yet
+                            lappend edgeCons $con
+                            
+                            set beg 1
+                            set end [$con getDimension]
+                            
+                            # Have we encountered this con's nodes in the edge loop?
+                            # Must check BEGIN node first as it's encountered first in 
+                            # edge loop for "same" orientation
+                            set ind [lsearch -exact $edgeNodes [$con getNode Begin]]
+                            if {-1 != $ind} {
+                                # exclude begin node (already indexed)
+                                incr beg 1
+                            } else {
+                                set node [$con getNode Begin]
+                                lappend edgeNodes $node
+                                set domBoundaryNode($dom,$domInd,node) $node
+                                if {$isTargetDom} {
+                                    puts "domInd:$domInd [mkXYZLink [$dom getXYZ $domInd]] node: [mkXYZLink [$node getXYZ]]"
+                                }
+                            }
+                            set ind [lsearch -exact $edgeNodes [$con getNode End]]
+                            if {-1 != $ind} {
+                                # exclude end node (already indexed)
+                                incr end -1
+                            } else {
+                                set node [$con getNode End]
+                                lappend edgeNodes $node
+                                
+                                set nodeInd [expr $domInd + $end - $beg]
+                                set domBoundaryNode($dom,$nodeInd,node) $node
+                                if {$isTargetDom} {
+                                    puts "domInd:$nodeInd [mkXYZLink [$dom getXYZ $nodeInd]] node: [mkXYZLink [$node getXYZ]]"
+                                }
+                            }
+                            
+                            for  { set cind $beg } { $cind <= $end } { incr cind } {
+                                set globalPointInd($dom,$domInd) $globalPointInd($con,$cind)
+                                set domBoundaryCon($dom,$domInd,con) $con
+                                incr interiorPtOffset
+                                incr domInd
+                            }
                         }
                     } else {
                         if { $doCon && $singleBlockMode } {
@@ -186,16 +237,56 @@ proc LoadGlobalPointIndex { { blks {} } } {
                             }
                             set globalPointInd($con,1) $globalPointInd($node)
                         }
-                        set beg [$con getDimension]
-                        set end 2
-                        for  { set cind $beg } { $cind >= $end } { incr cind -1 } {
-                            set globalPointInd($dom,$domInd) $globalPointInd($con,$cind)
-                            incr interiorPtOffset
-                            incr domInd
+                        set ind [lsearch -exact $edgeCons $con]
+                        if {-1 == $ind} {
+                            # haven't visited this con yet
+                            lappend edgeCons $con
+                            
+                            # walk con indices in reverse order
+                            set beg [$con getDimension]
+                            set end 1
+                            
+                            # Have we encountered this con's nodes in the edge loop?
+                            # Must check END node first as it's encountered first in 
+                            # edge loop for "opposite" orientation
+                            set ind [lsearch -exact $edgeNodes [$con getNode End]]
+                            if {-1 != $ind} {
+                                # exclude end node (already indexed)
+                                incr beg -1
+                            } else {
+                                set node [$con getNode End]
+                                lappend edgeNodes $node
+                                set domBoundaryNode($dom,$domInd,node) $node
+                                if {$isTargetDom} {
+                                    puts "domInd:$domInd [mkXYZLink [$dom getXYZ $domInd]] node: [mkXYZLink [$node getXYZ]]"
+                                }
+                            }
+
+                            set ind [lsearch -exact $edgeNodes [$con getNode Begin]]
+                            if {-1 != $ind} {
+                                # exclude begin node (already indexed)
+                                incr end 1
+                            } else {
+                                set node [$con getNode Begin]
+                                lappend edgeNodes $node
+                                set nodeInd [expr $domInd + $end - $beg]
+                                set domBoundaryNode($dom,$nodeInd,node) $node
+                                if {$isTargetDom} {
+                                    puts "domInd:$nodeInd [mkXYZLink [$dom getXYZ $nodeInd]] node: [mkXYZLink [$node getXYZ]]"
+                                }
+                            }
+
+                            for  { set cind $beg } { $cind >= $end } { incr cind -1 } {
+                                set globalPointInd($dom,$domInd) $globalPointInd($con,$cind)
+                                set domBoundaryCon($dom,$domInd,con) $con
+                                incr interiorPtOffset
+                                incr domInd
+                            }
                         }
                     }
                 }
             }
+            
             set globalPointInd($dom,interiorPtOffset) $interiorPtOffset
             set numPts [expr [lindex $dims 0] * [lindex $dims 1]]
             for { set domInd [expr $interiorPtOffset+1] } { $domInd <= $numPts } { incr domInd } {
@@ -506,6 +597,41 @@ proc LoadGlobalPointIndex { { blks {} } } {
             puts "blk $i [$blk getXYZ $i]"
         }
     }
+    
+    set verifyGlobalInds 0
+    if { $verifyGlobalInds && $singleBlockMode } {
+        set tol [pw::Grid getGridPointTolerance]
+        puts "\nVERIFY $tol"
+        foreach con $cons {
+            set dim [$con getDimension]
+            for { set i 1 } { $i <= $dim } { incr i } {
+                set blkXYZ [$blk getXYZ -grid $globalPointInd($con,$i)]
+                set xyz [$con getXYZ -grid $i]
+                set diff [pwu::Vector3 length [pwu::Vector3 subtract $blkXYZ $xyz]]
+                if {$diff > $tol} {
+                    puts "[mkEntLink $con] $i $globalPointInd($con,$i) [mkXYZLink $xyz] != [mkXYZLink $blkXYZ]"
+                    exit
+                }
+            }
+        }
+        
+        foreach dom $doms {
+            set dims [$dom getDimensions]
+            
+            set numPts [expr [lindex $dims 0] * [lindex $dims 1]]
+            for { set i 1 } { $i <= $numPts } { incr i } {
+            
+                set blkXYZ [$blk getXYZ -grid $globalPointInd($dom,$i)]
+                set xyz [$dom getXYZ -grid $i]
+                set diff [pwu::Vector3 length [pwu::Vector3 subtract $blkXYZ $xyz]]
+                if {$diff > $tol} {
+                    puts "[mkEntLink $dom] $i $globalPointInd($dom,$i) [mkXYZLink $xyz] != [mkXYZLink $blkXYZ]"
+                    exit
+                }
+            }
+        }        
+    }
+    
 }
 
 # return EGADS ID element in given dictionary
@@ -533,13 +659,20 @@ proc getEgadsFaceID { params } {
 }
 
 # return EGADS ID of specified grid point
-proc getEgadsIDByGridPoint { gridPoint } {
+proc getEgadsIDByGridPoint { gridPoint {verbose 0}} {
     set params [getEgadsDictionary $gridPoint]
+    if {$verbose} {
+        puts "  EGADS dictionary"
+        set dictData [dict get $params]
+        foreach {name val} $dictData {
+            puts "    $name: $val"
+        }
+    }
     return [getEgadsID $params]
 }
 
 # return EGADS dictionary for the specified grid point
-proc getEgadsDictionary { gridPoint } {
+proc getEgadsDictionary { gridPoint {verbose 0}} {
     set egads_dict_name "PW::Data"
     set params [pw::Database getAttributeDictionary $gridPoint $egads_dict_name]
     if { 0 == [llength $params] } {
@@ -553,6 +686,14 @@ proc getEgadsDictionary { gridPoint } {
         if { 0 == [llength $params] } {
             # NO ATTRIBUTE - try children
             set params [pw::Database getAttributeDictionary -children $gridPoint $egads_dict_name]
+        }
+    }
+
+    if {$verbose} {
+        puts "  EGADS dictionary"
+        set dictData [dict get $params]
+        foreach {name val} $dictData {
+            puts "    $name: $val"
         }
     }
 
@@ -580,37 +721,59 @@ proc mapEgadsCurves { } {
     }
 
     set ents [array names curveID]
+    set mapCount 0
+    set unmapCount 0
+    set count 0
     foreach ent $ents {
+        incr count
         set id $curveID($ent)
         if [info exists orig_curve($id)] {
             set egadsCurveMap($ent) $orig_curve($id)
             # puts "Mapped [mkEntLink $ent] to [mkEntLink $orig_curve($id)] ($id)"
+            incr mapCount
         } else {
-            # puts "**NO MAP [mkEntLink $ent] ($id)"
+            puts "**NO MAP [mkEntLink $ent] ($id)"
+        # set egadsID [getEgadsID [getEgadsDictionary [list 0.1 0.0 $ent] 1]]
+            incr unmapCount
         }
+    }
+    
+    puts "Mapped $mapCount / $count curves to EGADS originals"
+    if {$unmapCount} {
+        puts "Missing 3D curve map for $unmapCount / $count curves "
+        exit
     }
 }
 
 # Return parametric coordinates of projected point on EGADS curve
-proc getUVOnOriginalEgadsCurve { xyz uvs } {
+proc getUVOnOriginalEgadsCurve { xyz uvs tol} {
     global egadsCurveMap egadsCurveMapMsgs
 
-    set curve [lindex $uvs 2]
+    set curve [lindex $uvs end]
     set new_uvs $uvs
     if [info exists egadsCurveMap($curve)] {
         set orig_curve $egadsCurveMap($curve)
         set new_uvs [$orig_curve closestPoint -distance dist $xyz]
         # puts "Mapped $uvs to $new_uvs"
-        set tol [pw::Database getSamePointTolerance]
         if { $dist > $tol } {
-            set msg "WARNING: projection distance [format "(%.6g)" $dist] to EGADS curve exceeds tolerance"
+            set msg "WARNING: projection distance [format "(%.6g)" $dist] to EGADS curve exceeds tolerance $tol"
             set egadsCurveMapMsgs($msg) 1
             # puts [format "%25.16e %25.16e %25.16e" [lindex $xyz 0] [lindex $xyz 1] [lindex $xyz 2]]
             # set xyz [pw::Application getXYZ $new_uvs]
             # puts [format "%25.16e %25.16e %25.16e" [lindex $xyz 0] [lindex $xyz 1] [lindex $xyz 2]]
         }
+        set u [lindex $new_uvs 0]
+        if {$u < 1e-9} {
+            set new_uvs [lreplace $new_uvs 0 0 0.0]
+        }
+        if {$u > 0.99999999} {
+            set new_uvs [lreplace $new_uvs 0 0 1.0]
+        }
+        
     } else {
-        # puts "**NO CURVE MAP [mkEntLink $curve]"
+        # puts "**NO CURVE MAP $uvs [mkEntLink $curve]"
+        
+        
         set msg "WARNING: No EGADS curve map for [mkEntLink $curve], exporting native UV"
         set egadsCurveMapMsgs($msg) 1
     }
@@ -660,7 +823,7 @@ proc decodeEgadsID { id } {
 # EGADS Face Groups (domains constrained to EGADS edge geometry)
 #  EGADS_face_ID  number_of_tri_faces_on_face number_of_quad_faces_on_face
 #    mesh face indices (grid file point indices forming face) (one face per line)
-proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
+proc WriteGeomMapFileV1 { fname blks { debugFormat 0 } } {
     global globalPointInd globalPoints domCellEdge
     global egadsCurveMapMsgs
 
@@ -713,6 +876,11 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
         set gridPoint [$con getPoint 1]
         set egadsID [getEgadsIDByGridPoint $gridPoint]
         set index $globalPointInd($node)
+        set tol [getAssembleToleranceForCon $con]
+        if {$tol == 0.0} {
+            # use global assembly tolerance
+            set tol $dbAssembleTol
+        }
 
         if { 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
             set meshPoint($index) 1
@@ -722,7 +890,7 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
             if [isVertex $egadsID] {
                 set uv [list 0.0 0.0]
             } else {
-                set gridPoint [getUVOnOriginalEgadsCurve $meshPoint($meshPoint(num),xyz) $gridPoint]
+                set gridPoint [getUVOnOriginalEgadsCurve $meshPoint($meshPoint(num),xyz) $gridPoint $tol]
                 set uv [lreplace $gridPoint 2 2]
             }
             set meshPoint($meshPoint(num),uv) $uv
@@ -743,7 +911,7 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
                 if [isVertex $egadsID] {
                     set uv [list 0.0 0.0]
                 } else {
-                    set gridPoint [getUVOnOriginalEgadsCurve $meshPoint($meshPoint(num),xyz) $gridPoint]
+                    set gridPoint [getUVOnOriginalEgadsCurve $meshPoint($meshPoint(num),xyz) $gridPoint $tol]
                     set uv [lreplace $gridPoint 2 2]
                 }
                 set meshPoint($meshPoint(num),uv) $uv
@@ -763,7 +931,7 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
             if [isVertex $egadsID] {
                 set uv [list 0.0 0.0]
             } else {
-                set gridPoint [getUVOnOriginalEgadsCurve $meshPoint($meshPoint(num),xyz) $gridPoint]
+                set gridPoint [getUVOnOriginalEgadsCurve $meshPoint($meshPoint(num),xyz) $gridPoint $tol]
                 set uv [lreplace $gridPoint 2 2]
             }
             set meshPoint($meshPoint(num),uv) $uv
@@ -1011,7 +1179,7 @@ proc WriteGeomMapFile { fname blks { debugFormat 0 } } {
 }
 
 # Write the EGACS associativity file for the given block
-proc writeEgadsAssocFile { blk fname } {
+proc writeEgadsAssocFile { blk fname {version 1} } {
     global globalPointInd globalPoints
 
     # Enumerate points by global index
@@ -1020,7 +1188,17 @@ proc writeEgadsAssocFile { blk fname } {
     # Map db curves to EGADS originals (preserves parameterization)
     mapEgadsCurves
 
-    WriteGeomMapFile $fname $blk
+    switch $version {
+        1 {
+            WriteGeomMapFileV1 $fname $blk
+          }
+        2 {
+            WriteGeomMapFileV2 $fname $blk
+          }
+        default {
+            error "Unknown geometry-mesh associativity format version"
+          }
+    }
 }
 
 # TEST - export geometry-mesh associativity file for all blocks

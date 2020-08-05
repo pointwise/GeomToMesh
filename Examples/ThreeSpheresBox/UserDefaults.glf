@@ -1,5 +1,5 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 #
 # This sample Pointwise script is not supported by Pointwise, Inc.
@@ -57,7 +57,7 @@ set genParams(ModelSize)                        0; # Set model size before CAD i
 set genParams(writeGMA)                   "false"; # Write out geometry-mesh associativity file (true or false)
 set genParams(assembleTolMult)                1.0; # Multiplier on model assembly tolerance for allowed MinEdge
 
-#Elevate On Export V18.2+
+# Elevate On Export V18.2+
 set eoeParams(degree)                           Q2; # Polynomial degree (Q1, Q2, Q3 or Q4) NOTE: ONLY APPLIES TO CGNS AND GMSH
 set eoeParams(costThreshold)                   0.9; # Cost convergence threshold
 set eoeParams(maxIncAngle)                   178.0; # Maximum included angle tolerance

@@ -1,5 +1,5 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 #
 # This sample Pointwise script is not supported by Pointwise, Inc.
@@ -26,8 +26,8 @@ set domParams(Algorithm)      "AdvancingFront"; # Isotropic (Delaunay, Advancing
 set domParams(FullLayers)                    0; # Domain full layers (0 for multi-normals, >= 1 for single normal)
 set domParams(MaxLayers)                     0; # Domain maximum layers
 set domParams(GrowthRate)                  1.2; # Domain growth rate for 2D T-Rex extrusion
-set domParams(IsoType)              "TriangleQuad"; # Domain iso cell type (Triangle or TriangleQuad)
-set domParams(TRexType)             "TriangleQuad"; # Domain T-Rex cell type (Triangle or TriangleQuad)
+set domParams(IsoType)          "TriangleQuad"; # Domain iso cell type (Triangle or TriangleQuad)
+set domParams(TRexType)         "TriangleQuad"; # Domain T-Rex cell type (Triangle or TriangleQuad)
 set domParams(TRexARLimit)                 0.0; # Domain T-Rex maximum aspect ratio limit (0 - not used)
 set domParams(Decay)                      0.50; # Domain boundary decay
 set domParams(MinEdge)                     0.0; # Domain minimum edge length
@@ -47,7 +47,7 @@ set blkParams(volInitialize)                    1; # Initialize block after setu
 
 # General
 set genParams(SkipMeshing)                      1; # Skip meshing of domains during interim processing
-set genParams(CAESolver)                   "UGRID"; # Selected CAE Solver 
+set genParams(CAESolver)                  "UGRID"; # Selected CAE Solver 
 set genParams(outerBoxScale)                  0.0; # Enclose geometry in box with specified scale (0 - no box)
 set genParams(sourceBoxLengthScale)           0.0; # Length scale of enclosed viscous walls in source box (0 - no box)
 set genParams(sourceBoxDirection)         {1 0 0}; # Principal direction (i.e. freestream vector)
@@ -55,20 +55,20 @@ set genParams(sourceBoxAngle)                 0.0; # Angle for widening source b
 set genParams(sourceGrowthFactor)            10.0; # Growth rate for spacing value along box
 set genParams(ModelSize)                        0; # Set model size before CAD import (0 - undefined)
 
-set genParams(writeGMA)                     "true"; # Write out geometry-mesh associativity file (true or false)
-set genParams(assembleTolMult)                 1.0; # Multiplier on model assembly tolerance for allowed MinEdge
+set genParams(writeGMA)                    "true"; # Write out geometry-mesh associativity file (true or false)
+set genParams(assembleTolMult)                1.0; # Multiplier on model assembly tolerance for allowed MinEdge
 
-set genParams(displayTRexCons)             "false"; # Highlighted display of TRex connectors (true or false)
+set genParams(displayTRexCons)            "false"; # Highlighted display of TRex connectors (true or false)
 
-#Elevate On Export
-set eoeParams(degree)                           Q1; # Polynomial degree (Q1, Q2, Q3 or Q4) NOTE: ONLY APPLIES TO CGNS AND GMSH
-set eoeParams(costThreshold)                   0.8; # Cost convergence threshold
-set eoeParams(maxIncAngle)                   175.0; # Maximum included angle tolerance
-set eoeParams(relax)                          0.05; # Iteration relaxation factor
-set eoeParams(smoothingPasses)                1000; # Number of smoothing passes
-set eoeParams(WCNWeight)                       0.5; # WCN cost component weighting factor
-set eoeParams(WCNMode)                 "Calculate"; # WCN weight factor method (UseValue or Calculate)
-set eoeParams(writeVTU)                     "true"; # Write out ParaView VTU files (true or false)
+# Elevate On Export
+set eoeParams(degree)                          Q1; # Polynomial degree (Q1, Q2, Q3 or Q4) NOTE: ONLY APPLIES TO CGNS AND GMSH
+set eoeParams(costThreshold)                  0.8; # Cost convergence threshold
+set eoeParams(maxIncAngle)                  175.0; # Maximum included angle tolerance
+set eoeParams(relax)                         0.05; # Iteration relaxation factor
+set eoeParams(smoothingPasses)               1000; # Number of smoothing passes
+set eoeParams(WCNWeight)                      0.5; # WCN cost component weighting factor
+set eoeParams(WCNMode)                "Calculate"; # WCN weight factor method (UseValue or Calculate)
+set eoeParams(writeVTU)                    "true"; # Write out ParaView VTU files (true or false)
 
 # DISCLAIMER:
 # TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, POINTWISE DISCLAIMS

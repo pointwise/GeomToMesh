@@ -1,5 +1,5 @@
 #
-# Copyright 2019 (c) Pointwise, Inc.
+# Copyright (c) 2019-2020 Pointwise, Inc.
 # All rights reserved.
 # 
 # This sample Pointwise script is not supported by Pointwise, Inc.
@@ -268,14 +268,18 @@ proc getMaxModelEdgeTolerance { models } {
 # ----------------------------------------------
 # Get maximum database edge tolerance
 # ----------------------------------------------
-proc maxDBEdgeTolerance { } {
+proc maxDBEdgeTolerance { {verbose 1} } {
 
-    puts "Computing maximum DB edge tolerance."
+    if {$verbose} {
+        puts "Computing maximum DB edge tolerance."
+    }
 
     set exam [pw::Examine create DatabaseEdgeTolerance]
 
     set QuiltList [pw::Database getAll -type "pw::Quilt"]
-    puts "  Quilt list has [llength $QuiltList] entries."
+    if {$verbose} {
+        puts "  Quilt list has [llength $QuiltList] entries."
+    }
   
     set tol 0.0
     foreach quilt $QuiltList {
@@ -297,7 +301,9 @@ proc maxDBEdgeTolerance { } {
                     }
                 }
             }
-            puts [format "  Quilt [$quilt getName]: edge tolerance = %.6g" $ltol]
+            if {$verbose} {
+                puts [format "  Quilt [$quilt getName]: edge tolerance = %.6g" $ltol]
+            }
             set tol [expr max( $ltol, $tol )]
         } msg] } {
             puts "  * * * * * * * * * * * * * * * * * * * *"
@@ -308,7 +314,9 @@ proc maxDBEdgeTolerance { } {
 
     $exam delete
 
-    puts [format "  Maximum DB edge tolerance = %.6g" $tol]
+    if {$verbose} {
+        puts [format "  Maximum DB edge tolerance = %.6g" $tol]
+    }
     return $tol
 }
 

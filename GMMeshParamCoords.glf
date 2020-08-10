@@ -745,6 +745,15 @@ proc mapEgadsCurves { } {
     }
 }
 
+# Return EGADS curve corresponding to PW curve
+proc getOriginalEgadsCurve {curve} {
+    global egadsCurveMap egadsCurveMapMsgs
+    if [info exists egadsCurveMap($curve)] {
+        return $egadsCurveMap($curve)
+    }
+    return ""
+}
+
 # Return parametric coordinates of projected point on EGADS curve
 proc getUVOnOriginalEgadsCurve { xyz uvs tol} {
     global egadsCurveMap egadsCurveMapMsgs

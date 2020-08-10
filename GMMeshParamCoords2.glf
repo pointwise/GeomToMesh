@@ -287,7 +287,7 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
     if { [llength $blks] == 0 } {
         return -code error "WriteGeometryFile: no block"
     }
-
+    
     set cons [list]
     set doms [list]
     foreach blk $blks {
@@ -571,12 +571,15 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         }
     }
     
+    
     # write con points which map to EGADS edges
     set egadsEdgeConCount 0
     foreach con $cons {
         set conName [$con getName]
         set dim [$con getDimension]
         set conEgadsID 0
+        set conDbCurve ""
+        set egadsCurve ""
         set tol [getAssembleToleranceForCon $con]
         if {$tol == 0.0} {
             # use global assembly tolerance
@@ -602,6 +605,8 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
                 puts "Unable to map $conName to EGADS edge ID"
                 continue
             }
+            set conDbCurve [lindex $gridPoint 2]
+            set egadsCurve [getOriginalEgadsCurve $conDbCurve]
             
             # check that other interior points map to same EgadsID
             for { set i 3 } { $i < $dim } { incr i } {
@@ -652,12 +657,11 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         set fmt "%8d %12d %25.16e "
         
         set isPeriodic 0
-        set begNode [$con getNode Begin]
-        set endNode [$con getNode End]
-        if {$begNode == $endNode} {
-            set isPeriodic 1
+        if {$egadsCurve != ""} {
+            if {[$egadsCurve isClosed]} {
+                set isPeriodic 1
+            }
         }
-
         
         for { set i 1 } { $i <= $dim } { incr i } {
             
@@ -666,7 +670,8 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
             if { 0 < [llength $egadsID] } {
                 set gridPoint [getUVOnOriginalEgadsCurve [$con getXYZ $i] $gridPoint $tol]
                 set uv [lreplace $gridPoint 2 2]
-                if {$isPeriodic} {
+                set ptU [lindex $uv 0]
+                if {$isPeriodic && ($ptU < 0.01 || $ptU > 0.99)} {
                     if {$i == 1} {
                         set gridPoint2 [$con getPoint 2]
                         set gridPoint2 [getUVOnOriginalEgadsCurve [$con getXYZ 2] $gridPoint2 $tol]

@@ -279,6 +279,10 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
     global egadsCurveMapMsgs dbAssembleTol egadsFaceDoms
     global domPeriodicPts domBoundaryNode
     
+    set writePoints 0;  # whether to write point XYZ as debug info
+    
+    # set startTime [clock clicks -milliseconds]
+    
     # Use assembly tolerance when projecting points
     set dbAssembleTol [maxDBEdgeTolerance 0]
 
@@ -321,7 +325,9 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         }
     }
 
-    set meshPoint(num) 0
+    if {$writePoints} {
+        set meshPoint(num) 0
+    }
 
     # add connector points
     foreach con $cons {
@@ -337,7 +343,7 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
             set tol $dbAssembleTol
         }
 
-        if { 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
+        if { $writePoints && 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
             set meshPoint($index) 1
             set meshPoint($meshPoint(num),ind) $index
             set meshPoint($meshPoint(num),xyz) [$con getXYZ 1]
@@ -358,7 +364,7 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
             set gridPoint [$con getPoint $i]
             set egadsID [getEgadsIDByGridPoint $gridPoint]
             set index $globalPointInd($con,$i)
-            if { 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
+            if { $writePoints && 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
                 set meshPoint($index) 1
                 set meshPoint($meshPoint(num),ind) $index
                 set meshPoint($meshPoint(num),xyz) [$con getXYZ $i]
@@ -378,7 +384,7 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         set gridPoint [$con getPoint $dim]
         set egadsID [getEgadsIDByGridPoint $gridPoint]
         set index $globalPointInd($node)
-        if { 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
+        if { $writePoints && 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
             set meshPoint($index) 1
             set meshPoint($meshPoint(num),ind) $index
             set meshPoint($meshPoint(num),xyz) [$con getXYZ $dim]
@@ -504,7 +510,7 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
                }
             }
             set index $globalPointInd($dom,$domInd)
-            if { 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
+            if { $writePoints && 0 < [llength $egadsID] && ! [info exists meshPoint($index)] } {
                 set meshPoint($index) 1
                 set meshPoint($meshPoint(num),ind) $index
                 set meshPoint($meshPoint(num),xyz) [$dom getXYZ $domInd]
@@ -541,7 +547,6 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
     puts $f "# NumConnectors  NumDomains"
     puts $f "[llength $cons] [llength $egadsFaceDoms(doms)]"
 
-    set writePoints 0
     if {$writePoints} {
         puts $f $meshPoint(num)
         if { $debugFormat } {
@@ -901,13 +906,15 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
     }
 
     puts "Wrote geometry-mesh associativity to $fname"
+    # set endTime [clock clicks -milliseconds]
+    # puts "elapsed time [format {%.2f} [expr ($endTime-$startTime)*0.001]]"
 }
 
 # TEST - export geometry-mesh associativity file for all blocks
 if 0 {
     set scriptDir [file dirname [info script]]
     set writeDir $scriptDir
-
+    
     source [file join $scriptDir "GMDatabaseUtility.glf"]
     source [file join $scriptDir "GMMeshParamCoords.glf"]
     source [file join $scriptDir "GMSafe.glf"]

@@ -708,13 +708,13 @@ proc mapEgadsCurves { } {
     set dbEnts [pw::Database getAll]
     foreach dbEnt $dbEnts {
         if { ! [$dbEnt isCurve] } { continue }
-        set egadsID [getEgadsID [getEgadsDictionary [list 0.1 0.0 $dbEnt]]]
+        set egadsID [getEgadsID [getEgadsDictionary [list 0.5 0.0 $dbEnt]]]
         if { 0 < [llength $egadsID] } {
             set curveID($dbEnt) $egadsID
         } else {
             # puts "    missing egadsID"
         }
-        set egadsID [getOrigEgadsID [getEgadsDictionary [list 0.1 0.0 $dbEnt]]]
+        set egadsID [getOrigEgadsID [getEgadsDictionary [list 0.5 0.0 $dbEnt]]]
         if { 0 < [llength $egadsID] } {
             set orig_curve($egadsID) $dbEnt
         }
@@ -733,7 +733,7 @@ proc mapEgadsCurves { } {
             incr mapCount
         } else {
             puts "**NO MAP [mkEntLink $ent] ($id)"
-        # set egadsID [getEgadsID [getEgadsDictionary [list 0.1 0.0 $ent] 1]]
+            puts "EGADS entity: [decodeEgadsID $id]"
             incr unmapCount
         }
     }
@@ -741,7 +741,7 @@ proc mapEgadsCurves { } {
     puts "Mapped $mapCount / $count curves to EGADS originals"
     if {$unmapCount} {
         puts "Missing 3D curve map for $unmapCount / $count curves "
-        exit
+        #exit
     }
 }
 

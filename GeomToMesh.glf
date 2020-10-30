@@ -601,7 +601,22 @@ proc geomtomesh { } {
     set sdomList [pw::Grid getAll -type pw::DomainStructured]
     loadDomainAttributes $udomList $sdomList
     CheckForBluntDomains $udomList $nodeList $nodeSpacing
+    
+    
+    #    ----------------------------------
+    #   |  Adapt connectors using sources  |
+    #    ----------------------------------
 
+    if { 0 != $conParams(SourceSpacing) } {
+        # Preform source refinement from connector spacing
+        puts "Performing Source Cloud Refinement"
+        connectorSourceSpacing $blkParams(boundaryDecay)
+    }
+    
+
+    #    -------------------------------------------------------------------
+    #   |  Optionally convert high aspect domains to structured             |
+    #    -------------------------------------------------------------------
     if {0 != $domParams(StrDomConvertARTrigger)} {
         IdentifyMappableDomains
         ConvertHighAspectDoms
@@ -619,15 +634,6 @@ proc geomtomesh { } {
         setup2DTRexBoundaries $udomList $domParams(TRexARLimit) $softconTRex $hardconTRex
     }
 
-    #    ----------------------------------
-    #   |  Adapt connectors using sources  |
-    #    ----------------------------------
-
-    if { 0 != $conParams(SourceSpacing) } {
-        # Preform source refinement from connector spacing
-        puts "Performing Source Cloud Refinement"
-        connectorSourceSpacing $blkParams(boundaryDecay)
-    }
 
     set udomList [pw::Grid getAll -type pw::DomainUnstructured]
     set numBaffles 0
@@ -712,18 +718,24 @@ proc geomtomesh { } {
     } else {
         SetDomSkipMeshing false
         puts "Performing initialization pass on all unstructured domains."
-        foreach dom $udomList {
-            puts "Initializing domain [$dom getName]"
-            set initMode [pw::Application begin UnstructuredSolver [list $dom]]
-            if { 0 != [catch { $initMode run Initialize } ] } {
-                puts "Initialize failed for domain [$dom getName]"
-                set blkParams(volInitialize) 0
+        # initialize doms in parallel
+        set initMode [pw::Application begin UnstructuredSolver $udomList]
+        if { 0 != [catch { $initMode run Initialize } ] } {
+            set failedDoms [$initMode getFailedEntities]
+            foreach dom $failedDoms {
+                puts "Initialize failed for domain [mkEntLink $dom]"
             }
-            $initMode end
-            pw::Display update
+            set blkParams(volInitialize) 0
         }
+        $initMode end
+        pw::Display update
     }
 
+
+    #    -----------------------------------------------------------------------
+    #   |  Clean up any mapped domains                                          |
+    #   |  If triangle mesh requested, converte to diagonalized representation  |
+    #    -----------------------------------------------------------------------
     if {0 != $domParams(StrDomConvertARTrigger)} {
         set sdomList [pw::Grid getAll -type pw::DomainStructured]
         if { 0 < [llength $sdomList] } {

@@ -329,6 +329,8 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         set meshPoint(num) 0
     }
 
+    set startTime [clock clicks -milliseconds]
+
     # add connector points
     foreach con $cons {
         set conName [$con getName]
@@ -399,6 +401,11 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
             incr meshPoint(num)
         }
     }
+
+    set endTime [clock clicks -milliseconds]
+    # puts " add connector points [format {%.2f secs} [expr ($endTime-$startTime) * 0.001]]" 
+    set startTime [clock clicks -milliseconds]
+
 
     # add domain interior points
     catch {unset egadsFaceDoms}
@@ -489,7 +496,8 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         set markedBadDom 0
 
         set dim [$dom getPointCount]
-        for { set domInd 1 } { $domInd <= $dim } { incr domInd } {
+        for { set domInd [expr $globalPointInd($dom,interiorPtOffset)+1] } { $domInd <= $dim } { incr domInd } {
+        
             if { ! [$dom isInteriorIndex $domInd] } {
                 # domain boundary points accounted for in connector constraints
                 continue
@@ -536,6 +544,10 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         }
     }
 
+    set endTime [clock clicks -milliseconds]
+    # puts " add domain interior points [format {%.2f secs} [expr ($endTime-$startTime) * 0.001]]" 
+    set startTime [clock clicks -milliseconds]
+
     # write the map file
     if [catch { open $fname "w" } f] {
         puts $f
@@ -576,6 +588,8 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         }
     }
     
+    
+    set startTime [clock clicks -milliseconds]
     
     # write con points which map to EGADS edges
     set egadsEdgeConCount 0
@@ -622,20 +636,24 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
                     puts "[mkEntLink $con] maps to more than one EGADS edge ID"
                     if {$goodConMap == 1} {
                         set gridPoint2 [$con getPoint 2]
+                        set gridPoint2Str [lreplace $gridPoint2 2 2 [mkEntLink [lindex $gridPoint2 2]]]
                         set xyz [$con getXYZ 2]
                         puts "  conPtInd: 2"
-                        puts "  dbCoords: $gridPoint2"
+                        puts "  dbCoords: $gridPoint2Str"
                         puts "  [mkXYZLink $xyz]"
                         puts "  egadsID: $conEgadsID"
+                        puts "  egads Ent: [decodeEgadsID $conEgadsID]"
                         # dictionary dump
                         set conEgadsID [getEgadsIDByGridPoint $gridPoint2 1 ]
 
                         puts ""
                         set xyz [$con getXYZ $i]
                         puts "  conPtInd: $i"
-                        puts "  dbCoords: $gridPoint"
+                        set gridPointStr [lreplace $gridPoint 2 2 [mkEntLink [lindex $gridPoint 2]]]
+                        puts "  dbCoords: $gridPointStr"
                         puts "  [mkXYZLink $xyz]"
                         puts "  egadsID: $egadsID"
+                        puts "  egads Ent: [decodeEgadsID $egadsID]"
                         # dictionary dump
                         set egadsID [getEgadsIDByGridPoint $gridPoint 1]
                         puts ""
@@ -669,8 +687,9 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         }
         
         for { set i 1 } { $i <= $dim } { incr i } {
-            
             set gridPoint [$con getPoint $i]
+            # make sure we're using UV on con db curve
+            set gridPoint [lreplace $gridPoint 2 2 $conDbCurve]
             set egadsID [getEgadsIDByGridPoint $gridPoint]
             if { 0 < [llength $egadsID] } {
                 set gridPoint [getUVOnOriginalEgadsCurve [$con getXYZ $i] $gridPoint $tol]
@@ -715,7 +734,11 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         incr egadsEdgeConCount
     }
     puts "GMA contains $egadsEdgeConCount edge groups"
-
+    
+    set endTime [clock clicks -milliseconds]
+    # puts " add write cons [format {%.2f secs} [expr ($endTime-$startTime) * 0.001]]" 
+    set startTime [clock clicks -milliseconds]
+    
     # write dom faces which map to EGADS faces
     if {[info exists egadsFaceDoms(bad_doms)]} {
         foreach dom $egadsFaceDoms(bad_doms) {
@@ -897,6 +920,10 @@ proc WriteGeomMapFileV2 { fname blks { debugFormat 0 } {verbose 0}} {
         }
     }
     puts "GMA contains [llength $egadsFaceDoms(doms)] face groups"
+    
+    set endTime [clock clicks -milliseconds]
+    # puts " add write doms [format {%.2f secs} [expr ($endTime-$startTime) * 0.001]]" 
+    set startTime [clock clicks -milliseconds]
     
     close $f
 

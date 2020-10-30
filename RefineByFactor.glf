@@ -33,7 +33,9 @@
 # Load Glyph and TK
 package require PWI_Glyph
 
-set factor [expr 12.0 / 11.0 ]
+set factor [expr 3.0 / 2.0 ]
+
+set initVolume true
 
 puts "-------------------------------"
 puts "Refinement factor = $factor"
@@ -50,7 +52,7 @@ set conMode [pw::Application begin Modify $conList]
     
         set dim [$con getDimension]
         if { $factor > 1.0 } {
-            set newdim [expr { max ($dim+1,int(floor($factor * $dim))) } ]
+            set newdim [expr { max ($dim+1,int(floor(0.999999 * $factor * $dim))) } ]
         } else {
             set newdim [expr { max(2, min($dim-1,int(floor($factor * $dim)))) } ]
         }
@@ -120,18 +122,21 @@ foreach name $condNames {
 set domList [pw::Grid getAll -type pw::DomainUnstructured]
 
 foreach dom $domList {
-    puts "  Refining domain [$dom getName]"
-    set refineMode [pw::Application begin UnstructuredSolver [list $dom]]
-    if { 0 != [catch { $refineMode run Refine } ] } {
-        puts "  Running initialize instead for domain [$dom getName]"
-        if { 0 != [catch { $refineMode run Initialize } ] } {
-            puts "    Initialize failed for domain [$dom getName]"
-            set blkParams(volInitialize) 0
-        }
+    if { 0 < [$dom getUnstructuredSolverAttribute TRexMaximumLayers] } {
+        set Growth [$dom getUnstructuredSolverAttribute TRexGrowthRate]
+        set newGrowth [expr $Growth ** (1.0 / $factor)]
+        puts "  Changing domain [$dom getName] TRex growth rate from $Growth to $newGrowth"
+        $dom setUnstructuredSolverAttribute TRexGrowthRate $newGrowth
     }
-    $refineMode end
-    pw::Display update
 }
+puts "Initializing domains"
+set initMode [pw::Application begin UnstructuredSolver $domList]
+if { 0 != [catch { $initMode run Initialize } ] } {
+    puts "    Initialize failed for domains"
+    set initVolume false
+}
+$initMode end
+pw::Display update
 
 #
 # scale source spacing values
@@ -166,7 +171,9 @@ if { 1 == $nblk } {
         $uBlk setUnstructuredSolverAttribute TRexGrowthRate $Growth
     
         $solveMode setStopWhenFullLayersNotMet true
-        $solveMode run Initialize
+        if { true == $initVolume } {
+            $solveMode run Initialize
+        }
     $solveMode end
 } else {
     puts "Invalid number of blocks!"

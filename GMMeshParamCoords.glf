@@ -755,7 +755,7 @@ proc getOriginalEgadsCurve {curve} {
 }
 
 # Return parametric coordinates of projected point on EGADS curve
-proc getUVOnOriginalEgadsCurve { xyz uvs tol} {
+proc getUVOnOriginalEgadsCurve { xyz uvs tol {verbose 0}} {
     global egadsCurveMap egadsCurveMapMsgs
 
     set curve [lindex $uvs end]
@@ -767,9 +767,11 @@ proc getUVOnOriginalEgadsCurve { xyz uvs tol} {
         if { $dist > $tol } {
             set msg "WARNING: projection distance [format "(%.6g)" $dist] to EGADS curve exceeds tolerance $tol"
             set egadsCurveMapMsgs($msg) 1
-            # puts [format "%25.16e %25.16e %25.16e" [lindex $xyz 0] [lindex $xyz 1] [lindex $xyz 2]]
-            # set xyz [pw::Application getXYZ $new_uvs]
-            # puts [format "%25.16e %25.16e %25.16e" [lindex $xyz 0] [lindex $xyz 1] [lindex $xyz 2]]
+            if {$verbose} {
+                puts [format "%25.16e %25.16e %25.16e" [lindex $xyz 0] [lindex $xyz 1] [lindex $xyz 2]]
+                set xyz [pw::Application getXYZ $new_uvs]
+                puts [format "%25.16e %25.16e %25.16e" [lindex $xyz 0] [lindex $xyz 1] [lindex $xyz 2]]
+            }
         }
         set u [lindex $new_uvs 0]
         if {$u < 1e-9} {
@@ -834,13 +836,16 @@ proc decodeEgadsID { id } {
 #    mesh face indices (grid file point indices forming face) (one face per line)
 proc WriteGeomMapFileV1 { fname blks { debugFormat 0 } } {
     global globalPointInd globalPoints domCellEdge
-    global egadsCurveMapMsgs
+    global egadsCurveMapMsgs dbAssembleTol
 
     catch { unset egadsCurveMapMsgs }
 
     if { [llength $blks] == 0 } {
         return -code error "WriteGeometryFile: no block"
     }
+
+    # Use assembly tolerance when projecting points
+    set dbAssembleTol [maxDBEdgeTolerance 0]
 
     set cons [list]
     set doms [list]
@@ -1191,11 +1196,20 @@ proc WriteGeomMapFileV1 { fname blks { debugFormat 0 } } {
 proc writeEgadsAssocFile { blk fname {version 1} } {
     global globalPointInd globalPoints
 
+    set startTime [clock clicks -milliseconds]
+
     # Enumerate points by global index
     LoadGlobalPointIndex $blk
+    
+    set endTime [clock clicks -milliseconds]
+    # puts " LoadGlobalPointIndex [format {%.2f secs} [expr ($endTime-$startTime) * 0.001]]" 
+    set startTime [clock clicks -milliseconds]
 
     # Map db curves to EGADS originals (preserves parameterization)
     mapEgadsCurves
+    set endTime [clock clicks -milliseconds]
+    # puts " mapEgadsCurves [format {%.2f secs} [expr ($endTime-$startTime) * 0.001]]" 
+    set startTime [clock clicks -milliseconds]
 
     switch $version {
         1 {
@@ -1208,6 +1222,10 @@ proc writeEgadsAssocFile { blk fname {version 1} } {
             error "Unknown geometry-mesh associativity format version"
           }
     }
+    
+    set endTime [clock clicks -milliseconds]
+    # puts " WriteGeomMapFileV2 [format {%.2f secs} [expr ($endTime-$startTime) * 0.001]]" 
+    
 }
 
 # TEST - export geometry-mesh associativity file for all blocks
